@@ -1,6 +1,10 @@
+import HomePage from "./pages/HomePage"
+
 const App = () => {
   return (
-    <div className="text-4xl text-red-500">Syncly</div>
+   <>
+    <HomePage/>
+   </>
   )
 }
 
