@@ -1,25 +1,83 @@
-import { useState } from "react"
+import { useState } from "react";
 
 const LoginPage = () => {
-    const [emailInput, setEmailInput] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-    const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        if(!emailInput.trim()){
-            console.log("Enter valid email");
-            return;
-        }
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    setError("");
+
+    if (!email.trim()) {
+      setError("Please enter your email.");
+      return;
     }
-    return (
+
+    if (!password) {
+      setError("Please enter your password.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // Supabase login will be added here.
+
+      console.log({
+        email: email.trim(),
+        password,
+      });
+    } catch (error) {
+      console.error(error);
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <main>
+      <h1>Welcome back to Syncly</h1>
+
+      <form onSubmit={handleSubmit}>
         <div>
-            <h2>Welcome to syncly</h2>
+          <label htmlFor="email">Email</label>
 
-            <form action="" onSubmit={handleSubmit}>
-                <input type="email" value={emailInput} onChange={(e)=> {setEmailInput(e.target.value)}} name="" id="" placeholder="Enter Email"/>
-                <button>Login</button>
-            </form>
+          <input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            autoComplete="email"
+          />
         </div>
-    )
-}
 
-export default LoginPage
+        <div>
+          <label htmlFor="password">Password</label>
+
+          <input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Your password"
+            autoComplete="current-password"
+          />
+        </div>
+
+        {error && <p>{error}</p>}
+
+        <button type="submit" disabled={loading}>
+          {loading ? "Logging in..." : "Login"}
+        </button>
+      </form>
+    </main>
+  );
+};
+
+export default LoginPage;

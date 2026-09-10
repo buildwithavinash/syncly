@@ -37,28 +37,27 @@ const SignupPage = () => {
     }
 
     try {
-        setLoading(true);
+      setLoading(true);
 
-        //Supabase signup
+      //Supabase signup
 
-        console.log({
-            name: name.trim(),
-            email: email.trim(),
-            password
-        });
+      console.log({
+        name: name.trim(),
+        email: email.trim(),
+        password,
+      });
 
-        setSuccess("Signup details are valid");
-    }catch(error){
-        console.error(error);
-        setError("Something went wrong. Please try again.")
-    }finally {
-        setLoading(false);
+      setSuccess("Signup details are valid");
+    } catch (error) {
+      console.error(error);
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
-
   return (
-     <main>
+    <main>
       <h1>Create your Syncly account</h1>
 
       <form onSubmit={handleSubmit}>
