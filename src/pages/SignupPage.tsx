@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { supabase } from "../lib/supabase";
 
 const SignupPage = () => {
   const [name, setName] = useState("");
@@ -39,15 +40,24 @@ const SignupPage = () => {
     try {
       setLoading(true);
 
-      //Supabase signup
-
-      console.log({
-        name: name.trim(),
+      const {data, error} = await supabase.auth.signUp({
         email: email.trim(),
         password,
-      });
+        options: {
+          data: {
+            name: name.trim(),
+          },
+        },
+      })
 
-      setSuccess("Signup details are valid");
+      if(error){
+        setError(error.message);
+        return;
+      }
+
+      console.log("Signup successful: ", data);
+
+      setSuccess("Account created! Please check your email to verify your account.");
     } catch (error) {
       console.error(error);
       setError("Something went wrong. Please try again.");

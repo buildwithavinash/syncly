@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, type SubmitEvent } from "react";
+import { supabase } from "../lib/supabase";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
@@ -7,7 +8,7 @@ const LoginPage = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     setError("");
@@ -25,14 +26,19 @@ const LoginPage = () => {
     try {
       setLoading(true);
 
-      // Supabase login will be added here.
-
-      console.log({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
+
+      if (error) {
+        setError(error.message);
+        return;
+      }
+
+      console.log("Login successful:", data);
     } catch (error) {
-      console.error(error);
+      console.error("Login error:", error);
       setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
