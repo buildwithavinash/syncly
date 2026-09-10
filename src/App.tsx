@@ -3,17 +3,41 @@ import CreateListPage from "./pages/CreateListPage"
 import HomePage from "./pages/HomePage"
 import SignupPage from "./pages/SignupPage"
 import LoginPage from "./pages/LoginPage"
+import PublicRoute from "./components/auth/PublicRoute"
+import ProtectedRoute from "./components/auth/ProtectedRoute"
 
 const App = () => {
   return (
    <>
-    <Routes>
-    <Route path="/" element={<HomePage/>}/>
-    <Route path="/create-list" element={<CreateListPage/>}/>
-    <Route path="/signup" element={<SignupPage/>}/>
-    <Route path="/login" element={<LoginPage/>}/>
-    
-    
+     <Routes>
+      <Route path="/" element={<HomePage />} />
+
+      <Route
+        path="/signup"
+        element={
+          <PublicRoute>
+            <SignupPage />
+          </PublicRoute>
+        }
+      />
+
+      <Route
+        path="/login"
+        element={
+          <PublicRoute>
+            <LoginPage />
+          </PublicRoute>
+        }
+      />
+
+      <Route
+        path="/create-list"
+        element={
+          <ProtectedRoute>
+            <CreateListPage />
+          </ProtectedRoute>
+        }
+      />
     </Routes>
    </>
   )

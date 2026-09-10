@@ -1,7 +1,9 @@
 import { useState, type SubmitEvent } from "react";
 import { supabase } from "../lib/supabase";
+import { useNavigate } from "react-router";
 
 const LoginPage = () => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -35,6 +37,8 @@ const LoginPage = () => {
         setError(error.message);
         return;
       }
+
+      navigate("/")
 
       console.log("Login successful:", data);
     } catch (error) {
