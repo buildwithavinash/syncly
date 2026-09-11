@@ -1,14 +1,16 @@
 import { useState, type SubmitEvent } from "react";
+import { useLocation, useNavigate } from "react-router";
 import { supabase } from "../lib/supabase";
-import { useNavigate } from "react-router";
 
 const LoginPage = () => {
-  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -28,7 +30,7 @@ const LoginPage = () => {
     try {
       setLoading(true);
 
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
@@ -38,9 +40,14 @@ const LoginPage = () => {
         return;
       }
 
-      navigate("/")
+      const searchParams = new URLSearchParams(location.search);
+      const redirectPath = searchParams.get("redirect");
 
-      console.log("Login successful:", data);
+      if (redirectPath) {
+        navigate(redirectPath, { replace: true });
+      } else {
+        navigate("/", { replace: true });
+      }
     } catch (error) {
       console.error("Login error:", error);
       setError("Something went wrong. Please try again.");

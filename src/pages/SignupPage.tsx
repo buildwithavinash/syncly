@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, type SubmitEvent } from "react";
+import { useLocation, useNavigate } from "react-router";
 import { supabase } from "../lib/supabase";
 
 const SignupPage = () => {
@@ -11,7 +12,10 @@ const SignupPage = () => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState("");
 
-  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     setError("");
@@ -40,7 +44,10 @@ const SignupPage = () => {
     try {
       setLoading(true);
 
-      const {data, error} = await supabase.auth.signUp({
+      const searchParams = new URLSearchParams(location.search);
+      const redirectPath = searchParams.get("redirect");
+
+      const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
         options: {
@@ -48,16 +55,30 @@ const SignupPage = () => {
             name: name.trim(),
           },
         },
-      })
+      });
 
-      if(error){
+      if (error) {
         setError(error.message);
         return;
       }
 
-      console.log("Signup successful: ", data);
+      console.log("Signup successful:", data);
 
-      setSuccess("Account created! Please check your email to verify your account.");
+      if (data.session && redirectPath) {
+        navigate(redirectPath, { replace: true });
+        return;
+      }
+
+      if (data.session) {
+        navigate("/", { replace: true });
+        return;
+      }
+
+      setSuccess(
+        redirectPath
+          ? "Account created! Please verify your email. After verification, open the invite link again to join the list."
+          : "Account created! Please check your email to verify your account."
+      );
     } catch (error) {
       console.error(error);
       setError("Something went wrong. Please try again.");
@@ -124,7 +145,6 @@ const SignupPage = () => {
         </div>
 
         {error && <p>{error}</p>}
-
         {success && <p>{success}</p>}
 
         <button type="submit" disabled={loading}>

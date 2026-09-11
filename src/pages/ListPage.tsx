@@ -277,6 +277,28 @@ const ListPage = () => {
     );
   };
 
+  const handleCreateInvite = async () => {
+  if (!id) {
+    setError("List ID is missing.");
+    return;
+  }
+
+  setError("");
+
+  const { data, error } = await supabase.rpc("create_list_invite", {
+    p_list_id: id,
+    p_expires_at: null,
+  });
+
+  if (error) {
+    console.error("Create invite error:", error);
+    setError(error.message);
+    return;
+  }
+
+  console.log("Invite token:", data);
+};
+
   if (loading) {
     return <p>Loading list...</p>;
   }
@@ -301,6 +323,15 @@ const ListPage = () => {
   return (
     <main>
       <h1>{list.name}</h1>
+
+
+      <section>
+  <h2>Share List</h2>
+
+  <button type="button" onClick={handleCreateInvite}>
+    Generate Invite
+  </button>
+</section>
 
       <p>List ID: {list.id}</p>
 

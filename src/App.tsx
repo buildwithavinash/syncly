@@ -6,6 +6,7 @@ import LoginPage from "./pages/LoginPage";
 import PublicRoute from "./components/auth/PublicRoute";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import ListPage from "./pages/ListPage";
+import InvitePage from "./pages/InvitePage";
 
 const App = () => {
   return (
@@ -39,6 +40,8 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+
+        <Route path="/invite/:token" element={<InvitePage />} />
 
         <Route
           path="/lists/:id"
