@@ -3,6 +3,7 @@ import { useParams } from "react-router";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import MembersList from "../components/lists/MembersList";
+import { usePresence } from "../hooks/usePresence";
 
 type List = {
   id: string;
@@ -27,6 +28,15 @@ type Item = {
 const ListPage = () => {
   const { id } = useParams();
   const { user } = useAuth();
+
+  const userName =
+  user?.user_metadata?.name ?? "Syncly User";
+
+const { onlineUsers } = usePresence(
+  id ?? "",
+  user?.id ?? "",
+  userName
+);
 
   const [list, setList] = useState<List | null>(null);
   const [items, setItems] = useState<Item[]>([]);
@@ -358,6 +368,23 @@ const ListPage = () => {
       <h1>{list.name}</h1>
 
 <MembersList listId={list.id} />
+
+<section>
+  <h2>Currently Viewing</h2>
+
+  {onlineUsers.length === 0 ? (
+    <p>No one is currently viewing this list.</p>
+  ) : (
+    <ul>
+      {onlineUsers.map((onlineUser) => (
+        <li key={onlineUser.userId}>
+          🟢 {onlineUser.name}
+        </li>
+      ))}
+    </ul>
+  )}
+</section>
+
       <p>List ID: {list.id}</p>
 
       {isOwner && (
