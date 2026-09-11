@@ -28,12 +28,12 @@ const Header = () => {
           <span>Loading...</span>
         ) : user ? (
           <>
-            <Link to="/create-list">Create List</Link>
-
-            <button type="button" onClick={handleLogout}>
-              Logout
-            </button>
-          </>
+  <Link to="/lists">My Lists</Link>
+  <Link to="/create-list">Create List</Link>
+  <button type="button" onClick={handleLogout}>
+    Logout
+  </button>
+</>
         ) : (
           <>
             <Link to="/login">Login</Link>
