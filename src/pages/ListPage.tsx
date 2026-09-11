@@ -1,9 +1,10 @@
 import { useEffect, useState, type SubmitEvent } from "react";
-import { useParams } from "react-router";
+import { Link, useParams } from "react-router";
+
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
-import MembersList from "../components/lists/MembersList";
 import { usePresence } from "../hooks/usePresence";
+import MembersList from "../components/lists/MembersList";
 
 type List = {
   id: string;
@@ -29,32 +30,35 @@ const ListPage = () => {
   const { id } = useParams();
   const { user } = useAuth();
 
-  const userName =
-  user?.user_metadata?.name ?? "Syncly User";
-
-const { onlineUsers } = usePresence(
-  id ?? "",
-  user?.id ?? "",
-  userName
-);
-
   const [list, setList] = useState<List | null>(null);
   const [items, setItems] = useState<Item[]>([]);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const [itemName, setItemName] = useState("");
   const [quantity, setQuantity] = useState("");
   const [category, setCategory] = useState("");
 
+  const [addingItem, setAddingItem] = useState(false);
+
   const [inviteLink, setInviteLink] = useState("");
   const [creatingInvite, setCreatingInvite] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copyingInvite, setCopyingInvite] = useState(false);
 
-  const [loading, setLoading] = useState(true);
-  const [addingItem, setAddingItem] = useState(false);
-  const [error, setError] = useState("");
+  const userName = user?.user_metadata?.name ?? "Syncly User";
 
+  const { onlineUsers } = usePresence(
+    id ?? "",
+    user?.id ?? "",
+    userName
+  );
+
+  /*
+   * Fetch the list and its items.
+   */
   useEffect(() => {
-    const fetchListAndItems = async () => {
+    const fetchListData = async () => {
       if (!id) {
         setError("List ID is missing.");
         setLoading(false);
@@ -65,6 +69,9 @@ const { onlineUsers } = usePresence(
         setLoading(true);
         setError("");
 
+        /*
+         * Fetch the list.
+         */
         const { data: listData, error: listError } = await supabase
           .from("lists")
           .select("*")
@@ -72,13 +79,16 @@ const { onlineUsers } = usePresence(
           .single();
 
         if (listError) {
-          console.error("Fetch list error:", listError);
+          console.error("Error fetching list:", listError);
           setError(listError.message);
           return;
         }
 
         setList(listData);
 
+        /*
+         * Fetch the items belonging to this list.
+         */
         const { data: itemsData, error: itemsError } = await supabase
           .from("items")
           .select("*")
@@ -86,27 +96,28 @@ const { onlineUsers } = usePresence(
           .order("created_at", { ascending: true });
 
         if (itemsError) {
-          console.error("Fetch items error:", itemsError);
+          console.error("Error fetching items:", itemsError);
           setError(itemsError.message);
           return;
         }
 
         setItems(itemsData ?? []);
       } catch (error) {
-        console.error("Unexpected error:", error);
-        setError("Something went wrong. Please try again.");
+        console.error("Unexpected error fetching list:", error);
+        setError("Something went wrong while loading the list.");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchListAndItems();
+    fetchListData();
   }, [id]);
 
+  /*
+   * Subscribe to realtime item changes.
+   */
   useEffect(() => {
-    if (!id) {
-      return;
-    }
+    if (!id) return;
 
     const channel = supabase
       .channel(`list-items-${id}`)
@@ -123,7 +134,7 @@ const { onlineUsers } = usePresence(
 
           setItems((currentItems) => {
             const alreadyExists = currentItems.some(
-              (item) => item.id === newItem.id,
+              (item) => item.id === newItem.id
             );
 
             if (alreadyExists) {
@@ -132,7 +143,7 @@ const { onlineUsers } = usePresence(
 
             return [...currentItems, newItem];
           });
-        },
+        }
       )
       .on(
         "postgres_changes",
@@ -147,29 +158,28 @@ const { onlineUsers } = usePresence(
 
           setItems((currentItems) =>
             currentItems.map((item) =>
-              item.id === updatedItem.id ? updatedItem : item,
-            ),
+              item.id === updatedItem.id ? updatedItem : item
+            )
           );
-        },
+        }
       )
       .on(
-  "postgres_changes",
-  {
-    event: "DELETE",
-    schema: "public",
-    table: "items",
-  },
-  (payload) => {
-    console.log("Realtime DELETE:", payload);
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "items",
+        },
+        (payload) => {
+          const deletedItem = payload.old as { id: string };
 
-    const deletedItem = payload.old as { id: string };
-
-    setItems((currentItems) =>
-      currentItems.filter((item) => item.id !== deletedItem.id)
-    );
-  }
-).subscribe((status) => {
-        console.log("Realtime status:", status);
+          setItems((currentItems) =>
+            currentItems.filter((item) => item.id !== deletedItem.id)
+          );
+        }
+      )
+      .subscribe((status) => {
+        console.log("Items realtime status:", status);
       });
 
     return () => {
@@ -177,132 +187,146 @@ const { onlineUsers } = usePresence(
     };
   }, [id]);
 
-  const handleAddItem = async (e: SubmitEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  /*
+   * Add a new item.
+   */
+  const handleAddItem = async (
+    event: SubmitEvent<HTMLFormElement>
+  ) => {
+    event.preventDefault();
 
-    setError("");
+    if (!id || !user) return;
 
     const trimmedName = itemName.trim();
     const trimmedQuantity = quantity.trim();
     const trimmedCategory = category.trim();
 
     if (!trimmedName) {
-      setError("Please enter an item name.");
-      return;
-    }
-
-    if (!id) {
-      setError("List ID is missing.");
-      return;
-    }
-
-    if (!user) {
-      setError("You must be logged in to add an item.");
       return;
     }
 
     try {
       setAddingItem(true);
+      setError("");
 
-      const { data, error } = await supabase
-        .from("items")
-        .insert({
-          list_id: id,
-          name: trimmedName,
-          quantity: trimmedQuantity || null,
-          category: trimmedCategory || null,
-          completed: false,
-          created_by: user.id,
-        })
-        .select()
-        .single();
+      const { error } = await supabase.from("items").insert({
+        list_id: id,
+        name: trimmedName,
+        quantity: trimmedQuantity || null,
+        category: trimmedCategory || null,
+        completed: false,
+        created_by: user.id,
+      });
 
       if (error) {
-        console.error("Add item error:", error);
+        console.error("Error adding item:", error);
         setError(error.message);
         return;
       }
-
-      setItems((currentItems) => {
-        const alreadyExists = currentItems.some((item) => item.id === data.id);
-
-        if (alreadyExists) {
-          return currentItems;
-        }
-
-        return [...currentItems, data];
-      });
 
       setItemName("");
       setQuantity("");
       setCategory("");
     } catch (error) {
-      console.error("Unexpected error:", error);
-      setError("Something went wrong. Please try again.");
+      console.error("Unexpected error adding item:", error);
+      setError("Something went wrong while adding the item.");
     } finally {
       setAddingItem(false);
     }
   };
 
-  const handleToggleItem = async (item: Item) => {
-    setError("");
+  /*
+   * Toggle an item's completed state.
+   *
+   * This uses an optimistic update:
+   *
+   * 1. Update the UI immediately.
+   * 2. Send the request to Supabase.
+   * 3. If Supabase fails, restore the previous value.
+   */
+  const handleToggleItem = async (
+    itemId: string,
+    completed: boolean
+  ) => {
+    const previousItem = items.find(
+      (item) => item.id === itemId
+    );
 
-    const newCompletedValue = !item.completed;
+    if (!previousItem) return;
 
-    const { data, error } = await supabase
+    /*
+     * Optimistic update.
+     *
+     * The UI changes immediately without waiting
+     * for Supabase.
+     */
+    setItems((currentItems) =>
+      currentItems.map((item) =>
+        item.id === itemId
+          ? { ...item, completed }
+          : item
+      )
+    );
+
+    /*
+     * Send the change to Supabase.
+     */
+    const { error } = await supabase
       .from("items")
-      .update({
-        completed: newCompletedValue,
-      })
-      .eq("id", item.id)
-      .select()
-      .single();
+      .update({ completed })
+      .eq("id", itemId);
 
+    /*
+     * Rollback if the request failed.
+     */
     if (error) {
-      console.error("Toggle item error:", error);
-      setError(error.message);
-      return;
-    }
+      console.error("Error updating item:", error);
 
-    setItems((currentItems) =>
-      currentItems.map((currentItem) =>
-        currentItem.id === item.id ? data : currentItem,
-      ),
-    );
+      setItems((currentItems) =>
+        currentItems.map((item) =>
+          item.id === itemId
+            ? {
+                ...item,
+                completed: previousItem.completed,
+              }
+            : item
+        )
+      );
+    }
   };
 
+  /*
+   * Delete an item.
+   */
   const handleDeleteItem = async (itemId: string) => {
-    setError("");
-
-    const { error } = await supabase.from("items").delete().eq("id", itemId);
+    const { error } = await supabase
+      .from("items")
+      .delete()
+      .eq("id", itemId);
 
     if (error) {
-      console.error("Delete item error:", error);
+      console.error("Error deleting item:", error);
       setError(error.message);
-      return;
     }
-
-    setItems((currentItems) =>
-      currentItems.filter((item) => item.id !== itemId),
-    );
   };
 
+  /*
+   * Create an invite link.
+   */
   const handleCreateInvite = async () => {
-    if (!id) {
-      setError("List ID is missing.");
-      return;
-    }
-
-    setError("");
-    setCopied(false);
+    if (!id) return;
 
     try {
       setCreatingInvite(true);
+      setError("");
 
-      const { data: token, error } = await supabase.rpc("create_list_invite", {
-        p_list_id: id,
-        p_expires_at: null,
-      });
+      const { data: token, error } = await supabase.rpc(
+        "create_list_invite",
+        {
+          p_list_id: id,
+          p_expires_at: null,
+        }
+      );
 
       if (error) {
         console.error("Create invite error:", error);
@@ -314,34 +338,37 @@ const { onlineUsers } = usePresence(
 
       setInviteLink(link);
     } catch (error) {
-      console.error("Unexpected error:", error);
+      console.error("Unexpected error creating invite:", error);
       setError("Something went wrong while creating the invite.");
     } finally {
       setCreatingInvite(false);
     }
   };
 
+  /*
+   * Copy the generated invite link.
+   */
   const handleCopyInvite = async () => {
-    if (!inviteLink) {
-      return;
-    }
+    if (!inviteLink) return;
 
     try {
+      setCopyingInvite(true);
+
       await navigator.clipboard.writeText(inviteLink);
-
-      setCopied(true);
-
-      setTimeout(() => {
-        setCopied(false);
-      }, 2000);
     } catch (error) {
       console.error("Copy invite error:", error);
       setError("Unable to copy the invite link.");
+    } finally {
+      setCopyingInvite(false);
     }
   };
 
   if (loading) {
-    return <p>Loading list...</p>;
+    return (
+      <main>
+        <p>Loading list...</p>
+      </main>
+    );
   }
 
   if (error && !list) {
@@ -349,6 +376,10 @@ const { onlineUsers } = usePresence(
       <main>
         <h1>Unable to load list</h1>
         <p>{error}</p>
+
+        <Link to="/lists">
+          Back to My Lists
+        </Link>
       </main>
     );
   }
@@ -357,6 +388,10 @@ const { onlineUsers } = usePresence(
     return (
       <main>
         <h1>List not found</h1>
+
+        <Link to="/lists">
+          Back to My Lists
+        </Link>
       </main>
     );
   }
@@ -365,28 +400,37 @@ const { onlineUsers } = usePresence(
 
   return (
     <main>
+      <Link to="/lists">
+        ← Back to My Lists
+      </Link>
+
       <h1>{list.name}</h1>
 
-<MembersList listId={list.id} />
+      {error && (
+        <p>{error}</p>
+      )}
 
-<section>
-  <h2>Currently Viewing</h2>
+      {/* Members */}
+      <MembersList listId={list.id} />
 
-  {onlineUsers.length === 0 ? (
-    <p>No one is currently viewing this list.</p>
-  ) : (
-    <ul>
-      {onlineUsers.map((onlineUser) => (
-        <li key={onlineUser.userId}>
-          🟢 {onlineUser.name}
-        </li>
-      ))}
-    </ul>
-  )}
-</section>
+      {/* Presence */}
+      <section>
+        <h2>Currently Viewing</h2>
 
-      <p>List ID: {list.id}</p>
+        {onlineUsers.length === 0 ? (
+          <p>No one is currently viewing this list.</p>
+        ) : (
+          <ul>
+            {onlineUsers.map((onlineUser) => (
+              <li key={onlineUser.userId}>
+                🟢 {onlineUser.name}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
+      {/* Owner-only sharing */}
       {isOwner && (
         <section>
           <h2>Share List</h2>
@@ -396,71 +440,90 @@ const { onlineUsers } = usePresence(
             onClick={handleCreateInvite}
             disabled={creatingInvite}
           >
-            {creatingInvite ? "Creating invite..." : "Generate Invite Link"}
+            {creatingInvite
+              ? "Creating..."
+              : "Create Invite Link"}
           </button>
 
           {inviteLink && (
             <div>
-              <p>Invite link:</p>
+              <p>{inviteLink}</p>
 
-              <input type="text" value={inviteLink} readOnly />
-
-              <button type="button" onClick={handleCopyInvite}>
-                {copied ? "Copied!" : "Copy Link"}
+              <button
+                type="button"
+                onClick={handleCopyInvite}
+                disabled={copyingInvite}
+              >
+                {copyingInvite ? "Copied" : "Copy Link"}
               </button>
             </div>
           )}
         </section>
       )}
 
+      {/* Add item */}
       <section>
         <h2>Add Item</h2>
 
         <form onSubmit={handleAddItem}>
           <div>
-            <label htmlFor="itemName">Item name</label>
+            <label htmlFor="item-name">
+              Item name
+            </label>
 
             <input
-              id="itemName"
+              id="item-name"
               type="text"
               value={itemName}
-              onChange={(e) => setItemName(e.target.value)}
+              onChange={(event) =>
+                setItemName(event.target.value)
+              }
               placeholder="Milk"
             />
           </div>
 
           <div>
-            <label htmlFor="quantity">Quantity</label>
+            <label htmlFor="item-quantity">
+              Quantity
+            </label>
 
             <input
-              id="quantity"
+              id="item-quantity"
               type="text"
               value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              placeholder="2 litres"
+              onChange={(event) =>
+                setQuantity(event.target.value)
+              }
+              placeholder="2"
             />
           </div>
 
           <div>
-            <label htmlFor="category">Category</label>
+            <label htmlFor="item-category">
+              Category
+            </label>
 
             <input
-              id="category"
+              id="item-category"
               type="text"
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              onChange={(event) =>
+                setCategory(event.target.value)
+              }
               placeholder="Groceries"
             />
           </div>
 
-          {error && <p>{error}</p>}
-
-          <button type="submit" disabled={addingItem}>
+          <button
+            type="submit"
+            disabled={addingItem}
+          >
             {addingItem ? "Adding..." : "Add Item"}
           </button>
         </form>
       </section>
 
+      {/* Items */}
       <section>
         <h2>Items</h2>
 
@@ -474,17 +537,39 @@ const { onlineUsers } = usePresence(
                   <input
                     type="checkbox"
                     checked={item.completed}
-                    onChange={() => handleToggleItem(item)}
+                    onChange={(event) =>
+                      handleToggleItem(
+                        item.id,
+                        event.target.checked
+                      )
+                    }
                   />
 
-                  <strong>{item.name}</strong>
-
-                  {item.quantity && <span> — {item.quantity}</span>}
-
-                  {item.category && <span> — {item.category}</span>}
+                  <span>
+                    {item.name}
+                  </span>
                 </label>
 
-                <button type="button" onClick={() => handleDeleteItem(item.id)}>
+                {item.quantity && (
+                  <span>
+                    {" "}
+                    — {item.quantity}
+                  </span>
+                )}
+
+                {item.category && (
+                  <span>
+                    {" "}
+                    — {item.category}
+                  </span>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleDeleteItem(item.id)
+                  }
+                >
                   Delete
                 </button>
               </li>
