@@ -191,49 +191,92 @@ const ListPage = () => {
    * Add a new item.
    */
   const handleAddItem = async (
-    event: SubmitEvent<HTMLFormElement>
-  ) => {
-    event.preventDefault();
+  event: SubmitEvent<HTMLFormElement>
+) => {
+  event.preventDefault();
 
-    if (!id || !user) return;
+  if (!id || !user) return;
 
-    const trimmedName = itemName.trim();
-    const trimmedQuantity = quantity.trim();
-    const trimmedCategory = category.trim();
+  const trimmedName = itemName.trim();
+  const trimmedQuantity = quantity.trim();
+  const trimmedCategory = category.trim();
 
-    if (!trimmedName) {
-      return;
-    }
+  if (!trimmedName) return;
 
-    try {
-      setAddingItem(true);
-      setError("");
+  const optimisticId = crypto.randomUUID();
 
-      const { error } = await supabase.from("items").insert({
+  const optimisticItem: Item = {
+    id: optimisticId,
+    list_id: id,
+    name: trimmedName,
+    quantity: trimmedQuantity || null,
+    category: trimmedCategory || null,
+    completed: false,
+    created_by: user.id,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  // Show the item immediately.
+  setItems((currentItems) => [
+    ...currentItems,
+    optimisticItem,
+  ]);
+
+  // Clear the form immediately.
+  setItemName("");
+  setQuantity("");
+  setCategory("");
+
+  try {
+    setAddingItem(true);
+    setError("");
+
+    const { data, error } = await supabase
+      .from("items")
+      .insert({
+        id: optimisticId,
         list_id: id,
         name: trimmedName,
         quantity: trimmedQuantity || null,
         category: trimmedCategory || null,
         completed: false,
         created_by: user.id,
-      });
+      })
+      .select()
+      .single();
 
-      if (error) {
-        console.error("Error adding item:", error);
-        setError(error.message);
-        return;
-      }
-
-      setItemName("");
-      setQuantity("");
-      setCategory("");
-    } catch (error) {
-      console.error("Unexpected error adding item:", error);
-      setError("Something went wrong while adding the item.");
-    } finally {
-      setAddingItem(false);
+    if (error) {
+      throw error;
     }
-  };
+
+    // Replace the optimistic item with the real database row.
+    setItems((currentItems) =>
+      currentItems.map((item) =>
+        item.id === optimisticId
+          ? data
+          : item
+      )
+    );
+  } catch (error) {
+    console.error("Error adding item:", error);
+
+    // Roll back the optimistic item.
+    setItems((currentItems) =>
+      currentItems.filter(
+        (item) => item.id !== optimisticId
+      )
+    );
+
+    setError(
+      error instanceof Error
+        ? error.message
+        : "Failed to add item."
+    );
+  } finally {
+    setAddingItem(false);
+  }
+};
 
   /*
    * Toggle an item's completed state.
@@ -298,17 +341,47 @@ const ListPage = () => {
   /*
    * Delete an item.
    */
-  const handleDeleteItem = async (itemId: string) => {
+ const handleDeleteItem = async (itemId: string) => {
+  const previousItem = items.find(
+    (item) => item.id === itemId
+  );
+
+  if (!previousItem) return;
+
+  // Remove the item immediately from the UI.
+  setItems((currentItems) =>
+    currentItems.filter(
+      (item) => item.id !== itemId
+    )
+  );
+
+  try {
+    setError("");
+
     const { error } = await supabase
       .from("items")
       .delete()
       .eq("id", itemId);
 
     if (error) {
-      console.error("Error deleting item:", error);
-      setError(error.message);
+      throw error;
     }
-  };
+  } catch (error) {
+    console.error("Error deleting item:", error);
+
+    // Roll back the deletion.
+    setItems((currentItems) => [
+      ...currentItems,
+      previousItem,
+    ]);
+
+    setError(
+      error instanceof Error
+        ? error.message
+        : "Failed to delete item."
+    );
+  }
+};
 
   /*
    * Create an invite link.
