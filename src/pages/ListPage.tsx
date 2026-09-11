@@ -2,6 +2,7 @@ import { useEffect, useState, type SubmitEvent } from "react";
 import { useParams } from "react-router";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
+import MembersList from "../components/lists/MembersList";
 
 type List = {
   id: string;
@@ -33,6 +34,10 @@ const ListPage = () => {
   const [itemName, setItemName] = useState("");
   const [quantity, setQuantity] = useState("");
   const [category, setCategory] = useState("");
+
+  const [inviteLink, setInviteLink] = useState("");
+  const [creatingInvite, setCreatingInvite] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [addingItem, setAddingItem] = useState(false);
@@ -108,7 +113,7 @@ const ListPage = () => {
 
           setItems((currentItems) => {
             const alreadyExists = currentItems.some(
-              (item) => item.id === newItem.id
+              (item) => item.id === newItem.id,
             );
 
             if (alreadyExists) {
@@ -117,7 +122,7 @@ const ListPage = () => {
 
             return [...currentItems, newItem];
           });
-        }
+        },
       )
       .on(
         "postgres_changes",
@@ -132,28 +137,28 @@ const ListPage = () => {
 
           setItems((currentItems) =>
             currentItems.map((item) =>
-              item.id === updatedItem.id ? updatedItem : item
-            )
+              item.id === updatedItem.id ? updatedItem : item,
+            ),
           );
-        }
+        },
       )
       .on(
-        "postgres_changes",
-        {
-          event: "DELETE",
-          schema: "public",
-          table: "items",
-          filter: `list_id=eq.${id}`,
-        },
-        (payload) => {
-          const deletedItem = payload.old as Item;
+  "postgres_changes",
+  {
+    event: "DELETE",
+    schema: "public",
+    table: "items",
+  },
+  (payload) => {
+    console.log("Realtime DELETE:", payload);
 
-          setItems((currentItems) =>
-            currentItems.filter((item) => item.id !== deletedItem.id)
-          );
-        }
-      )
-      .subscribe((status) => {
+    const deletedItem = payload.old as { id: string };
+
+    setItems((currentItems) =>
+      currentItems.filter((item) => item.id !== deletedItem.id)
+    );
+  }
+).subscribe((status) => {
         console.log("Realtime status:", status);
       });
 
@@ -209,9 +214,7 @@ const ListPage = () => {
       }
 
       setItems((currentItems) => {
-        const alreadyExists = currentItems.some(
-          (item) => item.id === data.id
-        );
+        const alreadyExists = currentItems.some((item) => item.id === data.id);
 
         if (alreadyExists) {
           return currentItems;
@@ -253,18 +256,15 @@ const ListPage = () => {
 
     setItems((currentItems) =>
       currentItems.map((currentItem) =>
-        currentItem.id === item.id ? data : currentItem
-      )
+        currentItem.id === item.id ? data : currentItem,
+      ),
     );
   };
 
   const handleDeleteItem = async (itemId: string) => {
     setError("");
 
-    const { error } = await supabase
-      .from("items")
-      .delete()
-      .eq("id", itemId);
+    const { error } = await supabase.from("items").delete().eq("id", itemId);
 
     if (error) {
       console.error("Delete item error:", error);
@@ -273,31 +273,62 @@ const ListPage = () => {
     }
 
     setItems((currentItems) =>
-      currentItems.filter((item) => item.id !== itemId)
+      currentItems.filter((item) => item.id !== itemId),
     );
   };
 
   const handleCreateInvite = async () => {
-  if (!id) {
-    setError("List ID is missing.");
-    return;
-  }
+    if (!id) {
+      setError("List ID is missing.");
+      return;
+    }
 
-  setError("");
+    setError("");
+    setCopied(false);
 
-  const { data, error } = await supabase.rpc("create_list_invite", {
-    p_list_id: id,
-    p_expires_at: null,
-  });
+    try {
+      setCreatingInvite(true);
 
-  if (error) {
-    console.error("Create invite error:", error);
-    setError(error.message);
-    return;
-  }
+      const { data: token, error } = await supabase.rpc("create_list_invite", {
+        p_list_id: id,
+        p_expires_at: null,
+      });
 
-  console.log("Invite token:", data);
-};
+      if (error) {
+        console.error("Create invite error:", error);
+        setError(error.message);
+        return;
+      }
+
+      const link = `${window.location.origin}/invite/${token}`;
+
+      setInviteLink(link);
+    } catch (error) {
+      console.error("Unexpected error:", error);
+      setError("Something went wrong while creating the invite.");
+    } finally {
+      setCreatingInvite(false);
+    }
+  };
+
+  const handleCopyInvite = async () => {
+    if (!inviteLink) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+
+      setCopied(true);
+
+      setTimeout(() => {
+        setCopied(false);
+      }, 2000);
+    } catch (error) {
+      console.error("Copy invite error:", error);
+      setError("Unable to copy the invite link.");
+    }
+  };
 
   if (loading) {
     return <p>Loading list...</p>;
@@ -320,20 +351,40 @@ const ListPage = () => {
     );
   }
 
+  const isOwner = user?.id === list.created_by;
+
   return (
     <main>
       <h1>{list.name}</h1>
 
-
-      <section>
-  <h2>Share List</h2>
-
-  <button type="button" onClick={handleCreateInvite}>
-    Generate Invite
-  </button>
-</section>
-
+<MembersList listId={list.id} />
       <p>List ID: {list.id}</p>
+
+      {isOwner && (
+        <section>
+          <h2>Share List</h2>
+
+          <button
+            type="button"
+            onClick={handleCreateInvite}
+            disabled={creatingInvite}
+          >
+            {creatingInvite ? "Creating invite..." : "Generate Invite Link"}
+          </button>
+
+          {inviteLink && (
+            <div>
+              <p>Invite link:</p>
+
+              <input type="text" value={inviteLink} readOnly />
+
+              <button type="button" onClick={handleCopyInvite}>
+                {copied ? "Copied!" : "Copy Link"}
+              </button>
+            </div>
+          )}
+        </section>
+      )}
 
       <section>
         <h2>Add Item</h2>
@@ -406,10 +457,7 @@ const ListPage = () => {
                   {item.category && <span> — {item.category}</span>}
                 </label>
 
-                <button
-                  type="button"
-                  onClick={() => handleDeleteItem(item.id)}
-                >
+                <button type="button" onClick={() => handleDeleteItem(item.id)}>
                   Delete
                 </button>
               </li>

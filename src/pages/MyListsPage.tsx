@@ -11,11 +11,6 @@ type List = {
   updated_at: string;
 };
 
-type Membership = {
-  list_id: string;
-  user_id: string;
-  role: string;
-};
 
 type ListWithRole = List & {
   role: string;
