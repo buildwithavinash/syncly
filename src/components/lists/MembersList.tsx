@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
+import { Users } from "lucide-react";
 import { supabase } from "../../lib/supabase";
-
 
 type Member = {
   user_id: string;
@@ -10,6 +10,16 @@ type Member = {
 
 type MembersListProps = {
   listId: string;
+};
+
+const getInitials = (name: string) => {
+  const parts = name.trim().split(/\s+/);
+
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 };
 
 const MembersList = ({ listId }: MembersListProps) => {
@@ -62,14 +72,14 @@ const MembersList = ({ listId }: MembersListProps) => {
 
         return {
           user_id: membership.user_id,
-          name: profile?.name ?? "Syncly User",
+          name: profile?.name ?? "Cartify user",
           role: membership.role,
         };
       });
 
       setMembers(membersWithNames);
-    } catch (error) {
-      console.error("Unexpected error fetching members:", error);
+    } catch (err) {
+      console.error("Unexpected error fetching members:", err);
       setError("Something went wrong while loading members.");
     }
   };
@@ -133,37 +143,61 @@ const MembersList = ({ listId }: MembersListProps) => {
 
   if (loading) {
     return (
-      <section>
-        <h2>Members</h2>
-        <p>Loading members...</p>
+      <section className="py-5">
+        <h2 className="mb-3 text-sm font-medium text-ink">Members</h2>
+        <p className="text-sm text-slate">Loading members...</p>
       </section>
     );
   }
 
   if (error) {
     return (
-      <section>
-        <h2>Members</h2>
-        <p>{error}</p>
+      <section className="py-5">
+        <h2 className="mb-3 text-sm font-medium text-ink">Members</h2>
+        <p className="rounded-md bg-danger-tint px-3 py-2 text-sm text-danger">
+          {error}
+        </p>
       </section>
     );
   }
 
   return (
-    <section>
-      <h2>Members</h2>
+    <section className="py-5">
+      <div className="mb-3 flex items-center gap-2">
+        <Users className="h-4 w-4 text-slate" />
+        <h2 className="text-sm font-medium text-ink">
+          Members {members.length > 0 && `(${members.length})`}
+        </h2>
+      </div>
 
       {members.length === 0 ? (
-        <p>No members found.</p>
+        <p className="text-sm text-slate">No members found.</p>
       ) : (
-        <ul>
+        <div className="flex flex-col divide-y divide-border rounded-lg border border-border">
           {members.map((member) => (
-            <li key={member.user_id}>
-              <strong>{member.name}</strong>
-              <span> — {member.role}</span>
-            </li>
+            <div
+              key={member.user_id}
+              className="flex items-center justify-between gap-3 px-4 py-3"
+            >
+              <div className="flex items-center gap-3">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-tint text-xs font-medium text-accent-ink">
+                  {getInitials(member.name)}
+                </span>
+                <span className="text-sm text-ink">{member.name}</span>
+              </div>
+
+              <span
+                className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs ${
+                  member.role === "owner"
+                    ? "bg-accent-tint text-accent-ink"
+                    : "bg-surface text-slate"
+                }`}
+              >
+                {member.role}
+              </span>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </section>
   );

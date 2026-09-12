@@ -1,18 +1,12 @@
 import ItemGroup from "./ItemGroup";
 import CompletedItems from "./CompletedItems";
-
 import type { Item } from "../../services/itemService";
 
 type ItemListProps = {
   items: Item[];
   loading: boolean;
-  onToggleItem: (
-    itemId: string,
-    completed: boolean
-  ) => Promise<void>;
-  onDeleteItem: (
-    itemId: string
-  ) => Promise<void>;
+  onToggleItem: (itemId: string, completed: boolean) => Promise<void>;
+  onDeleteItem: (itemId: string) => Promise<void>;
 };
 
 type ItemGroupData = {
@@ -28,66 +22,44 @@ const ItemList = ({
 }: ItemListProps) => {
   if (loading) {
     return (
-      <section>
-        <h2>Items</h2>
-        <p>Loading items...</p>
+      <section className="py-5">
+        <h2 className="mb-3 text-sm font-medium text-ink">Items</h2>
+        <p className="text-sm text-slate">Loading items...</p>
       </section>
     );
   }
 
   if (items.length === 0) {
     return (
-      <section>
-        <h2>Items</h2>
-        <p>No items yet.</p>
+      <section className="py-5">
+        <h2 className="mb-3 text-sm font-medium text-ink">Items</h2>
+        <p className="text-sm text-slate">No items yet.</p>
       </section>
     );
   }
 
-  /*
-   * Separate active and completed items.
-   */
-  const activeItems = items.filter(
-    (item) => !item.completed
-  );
+  const activeItems = items.filter((item) => !item.completed);
+  const completedItems = items.filter((item) => item.completed);
 
-  const completedItems = items.filter(
-    (item) => item.completed
-  );
-
-  /*
-   * Group active items by category.
-   */
-  const groupedItems = activeItems.reduce<
-    ItemGroupData[]
-  >((groups, item) => {
-    const category =
-      item.category?.trim() ||
-      "Uncategorized";
-
-    const existingGroup = groups.find(
-      (group) =>
-        group.category === category
-    );
+  const groupedItems = activeItems.reduce<ItemGroupData[]>((groups, item) => {
+    const category = item.category?.trim() || "Uncategorized";
+    const existingGroup = groups.find((group) => group.category === category);
 
     if (existingGroup) {
       existingGroup.items.push(item);
     } else {
-      groups.push({
-        category,
-        items: [item],
-      });
+      groups.push({ category, items: [item] });
     }
 
     return groups;
   }, []);
 
   return (
-    <section>
-      <h2>Items</h2>
+    <section className="py-5">
+      <h2 className="mb-1 text-sm font-medium text-ink">Items</h2>
 
       {activeItems.length === 0 ? (
-        <p>All items are completed.</p>
+        <p className="py-3 text-sm text-slate">All items are completed.</p>
       ) : (
         groupedItems.map((group) => (
           <ItemGroup
