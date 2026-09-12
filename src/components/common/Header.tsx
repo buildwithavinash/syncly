@@ -130,7 +130,7 @@ const Header = () => {
       {user &&
         createPortal(
           <div
-            className={`fixed inset-0 z-[100] overflow-hidden sm:hidden ${
+            className={`fixed inset-0 z-100 overflow-hidden sm:hidden ${
               menuOpen ? "" : "pointer-events-none"
             }`}
           >

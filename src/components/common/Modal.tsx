@@ -47,7 +47,7 @@ const Modal = ({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[90] flex items-end justify-center bg-ink/45 sm:items-center"
+      className="fixed inset-0 z-90 flex items-end justify-center bg-ink/45 sm:items-center"
       onClick={(event) => {
         if (event.target === event.currentTarget) {
           onClose();

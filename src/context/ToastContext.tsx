@@ -64,7 +64,7 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
 
       {createPortal(
         <div
-          className="pointer-events-none fixed inset-x-0 bottom-0 z-[100] flex flex-col items-center gap-2 px-gutter pb-6 sm:items-end sm:pr-8"
+          className="pointer-events-none fixed inset-x-0 bottom-0 z-100 flex flex-col items-center gap-2 px-gutter pb-6 sm:items-end sm:pr-8"
           aria-live="polite"
         >
           {toasts.map((toast) => (
