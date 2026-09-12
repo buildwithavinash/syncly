@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
+import { ArrowLeft, Plus, ListChecks } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 
@@ -10,7 +11,6 @@ type List = {
   created_at: string;
   updated_at: string;
 };
-
 
 type ListWithRole = List & {
   role: string;
@@ -76,9 +76,9 @@ const MyListsPage = () => {
         );
 
         setLists(listsWithRoles);
-      } catch (error) {
-        console.error("Unexpected error:", error);
-        setError("Something went wrong. Please try again.");
+      } catch (err) {
+        console.error("Unexpected error:", err);
+        setError("Something went wrong. Try again.");
       } finally {
         setLoading(false);
       }
@@ -89,58 +89,106 @@ const MyListsPage = () => {
 
   if (loading) {
     return (
-      <main>
-        <h1>My Lists</h1>
-        <p>Loading your lists...</p>
+      <main className="relative min-h-screen px-gutter py-12">
+        <Link
+          to="/"
+          aria-label="Back to Cartify"
+          className="absolute left-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-border text-ink transition-colors hover:border-border-strong hover:bg-surface sm:left-6 sm:top-6"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Link>
+
+        <div className="mx-auto max-w-container pt-14">
+          <h1 className="font-display text-2xl text-ink">Your lists</h1>
+          <p className="mt-6 text-sm text-slate">Loading your lists...</p>
+        </div>
       </main>
     );
   }
 
   return (
-    <main>
-      <div>
-        <h1>My Lists</h1>
+    <main className="relative min-h-screen px-gutter py-12">
+      <Link
+        to="/"
+        aria-label="Back to Cartify"
+        className="absolute left-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-border text-ink transition-colors hover:border-border-strong hover:bg-surface sm:left-6 sm:top-6"
+      >
+        <ArrowLeft className="h-4 w-4" />
+      </Link>
 
-        <Link to="/create-list">Create New List</Link>
-      </div>
+      <div className="mx-auto max-w-container pt-14">
+        <div className="mb-8 flex items-center justify-between">
+          <h1 className="font-display text-2xl text-ink">Your lists</h1>
 
-      {error && <p>{error}</p>}
+          <Link
+            to="/create-list"
+            className="inline-flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+          >
+            <Plus className="h-4 w-4" />
+            New list
+          </Link>
+        </div>
 
-      {!error && lists.length === 0 && (
-        <section>
-          <h2>No lists yet</h2>
-
-          <p>
-            Create your first list or join someone else's list with an invite
-            link.
+        {error && (
+          <p className="mb-6 rounded-md bg-danger-tint px-3 py-2 text-sm text-danger">
+            {error}
           </p>
+        )}
 
-          <Link to="/create-list">Create a List</Link>
-        </section>
-      )}
+        {!error && lists.length === 0 && (
+          <div className="flex flex-col items-center rounded-lg border border-dashed border-border-strong py-16 text-center">
+            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-accent-tint">
+              <ListChecks className="h-5 w-5 text-accent-ink" />
+            </div>
 
-      {lists.length > 0 && (
-        <section>
-          <h2>Your Lists</h2>
+            <h2 className="font-display text-lg text-ink">No lists yet</h2>
+            <p className="mt-1.5 max-w-xs text-sm text-slate">
+              Create your first list, or join someone else's with an invite
+              link.
+            </p>
 
-          <ul>
+            <Link
+              to="/create-list"
+              className="mt-5 inline-flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+            >
+              <Plus className="h-4 w-4" />
+              Create a list
+            </Link>
+          </div>
+        )}
+
+        {lists.length > 0 && (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {lists.map((list) => (
-              <li key={list.id}>
-                <Link to={`/lists/${list.id}`}>
-                  <strong>{list.name}</strong>
-                </Link>
+              <Link
+                key={list.id}
+                to={`/lists/${list.id}`}
+                className="rounded-lg border border-border bg-bg p-4 transition-colors hover:border-border-strong"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="font-display text-base text-ink">
+                    {list.name}
+                  </h3>
 
-                <span> — {list.role}</span>
+                  <span
+                    className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs ${
+                      list.role === "owner"
+                        ? "bg-accent-tint text-accent-ink"
+                        : "bg-surface text-slate"
+                    }`}
+                  >
+                    {list.role}
+                  </span>
+                </div>
 
-                <p>
-                  Created{" "}
-                  {new Date(list.created_at).toLocaleDateString()}
+                <p className="mt-2 text-xs text-slate">
+                  Created {new Date(list.created_at).toLocaleDateString()}
                 </p>
-              </li>
+              </Link>
             ))}
-          </ul>
-        </section>
-      )}
+          </div>
+        )}
+      </div>
     </main>
   );
 };

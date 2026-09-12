@@ -88,20 +88,18 @@ const SignupPage = () => {
     }
   };
 
-  const BackButton = () => (
-    <Link
-      to="/"
-      aria-label="Back to Cartify"
-      className="absolute left-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-border text-ink transition-colors hover:border-border-strong hover:bg-surface sm:left-6 sm:top-6"
-    >
-      <ArrowLeft className="h-4 w-4" />
-    </Link>
-  );
+
 
   if (awaitingVerification) {
     return (
       <main className="relative min-h-screen px-gutter py-12">
-        <BackButton />
+        <Link
+        to="/"
+        aria-label="Back to Cartify"
+        className="absolute left-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-border text-ink transition-colors hover:border-border-strong hover:bg-surface sm:left-6 sm:top-6"
+      >
+        <ArrowLeft className="h-4 w-4" />
+      </Link>
 
         <div className="mx-auto flex max-w-sm flex-col justify-center pt-14 text-center">
           <div className="mx-auto mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-accent-tint">
@@ -131,7 +129,13 @@ const SignupPage = () => {
 
   return (
     <main className="relative min-h-screen px-gutter py-12">
-      <BackButton />
+      <Link
+        to="/"
+        aria-label="Back to Cartify"
+        className="absolute left-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-border text-ink transition-colors hover:border-border-strong hover:bg-surface sm:left-6 sm:top-6"
+      >
+        <ArrowLeft className="h-4 w-4" />
+      </Link>
 
       <div className="mx-auto flex max-w-sm flex-col justify-center pt-14">
         <h1 className="font-display text-2xl text-ink">Create your account</h1>
