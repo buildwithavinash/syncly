@@ -1,387 +1,61 @@
-import { useEffect, useState, type SubmitEvent } from "react";
+import { useState } from "react";
 import { Link, useParams } from "react-router";
 
-import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { usePresence } from "../hooks/usePresence";
+import { useList } from "../hooks/useList";
+import { useListItems } from "../hooks/useListItems";
+
+import { createListInvite } from "../services/listService";
+
 import MembersList from "../components/lists/MembersList";
-
-type List = {
-  id: string;
-  name: string;
-  created_by: string;
-  created_at: string;
-  updated_at: string;
-};
-
-type Item = {
-  id: string;
-  list_id: string;
-  name: string;
-  quantity: string | null;
-  category: string | null;
-  completed: boolean;
-  created_by: string;
-  created_at: string;
-  updated_at: string;
-};
 
 const ListPage = () => {
   const { id } = useParams();
   const { user } = useAuth();
 
-  const [list, setList] = useState<List | null>(null);
-  const [items, setItems] = useState<Item[]>([]);
+  /*
+   * List data.
+   */
+  const {
+    list,
+    loading: listLoading,
+    error: listError,
+  } = useList(id);
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  /*
+   * Item data and actions.
+   */
+  const {
+    items,
+    loading: itemsLoading,
+    error: itemsError,
+    addingItem,
+    addItem,
+    toggleItem,
+    deleteItemById,
+  } = useListItems(id, user?.id);
 
-  const [itemName, setItemName] = useState("");
-  const [quantity, setQuantity] = useState("");
-  const [category, setCategory] = useState("");
-
-  const [addingItem, setAddingItem] = useState(false);
-
+  /*
+   * Invite state.
+   */
   const [inviteLink, setInviteLink] = useState("");
-  const [creatingInvite, setCreatingInvite] = useState(false);
-  const [copyingInvite, setCopyingInvite] = useState(false);
+  const [creatingInvite, setCreatingInvite] =
+    useState(false);
+  const [copyingInvite, setCopyingInvite] =
+    useState(false);
 
-  const userName = user?.user_metadata?.name ?? "Syncly User";
+  /*
+   * Presence.
+   */
+  const userName =
+    user?.user_metadata?.name ?? "Syncly User";
 
   const { onlineUsers } = usePresence(
     id ?? "",
     user?.id ?? "",
     userName
   );
-
-  /*
-   * Fetch the list and its items.
-   */
-  useEffect(() => {
-    const fetchListData = async () => {
-      if (!id) {
-        setError("List ID is missing.");
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        setError("");
-
-        /*
-         * Fetch the list.
-         */
-        const { data: listData, error: listError } = await supabase
-          .from("lists")
-          .select("*")
-          .eq("id", id)
-          .single();
-
-        if (listError) {
-          console.error("Error fetching list:", listError);
-          setError(listError.message);
-          return;
-        }
-
-        setList(listData);
-
-        /*
-         * Fetch the items belonging to this list.
-         */
-        const { data: itemsData, error: itemsError } = await supabase
-          .from("items")
-          .select("*")
-          .eq("list_id", id)
-          .order("created_at", { ascending: true });
-
-        if (itemsError) {
-          console.error("Error fetching items:", itemsError);
-          setError(itemsError.message);
-          return;
-        }
-
-        setItems(itemsData ?? []);
-      } catch (error) {
-        console.error("Unexpected error fetching list:", error);
-        setError("Something went wrong while loading the list.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchListData();
-  }, [id]);
-
-  /*
-   * Subscribe to realtime item changes.
-   */
-  useEffect(() => {
-    if (!id) return;
-
-    const channel = supabase
-      .channel(`list-items-${id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "items",
-          filter: `list_id=eq.${id}`,
-        },
-        (payload) => {
-          const newItem = payload.new as Item;
-
-          setItems((currentItems) => {
-            const alreadyExists = currentItems.some(
-              (item) => item.id === newItem.id
-            );
-
-            if (alreadyExists) {
-              return currentItems;
-            }
-
-            return [...currentItems, newItem];
-          });
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "items",
-          filter: `list_id=eq.${id}`,
-        },
-        (payload) => {
-          const updatedItem = payload.new as Item;
-
-          setItems((currentItems) =>
-            currentItems.map((item) =>
-              item.id === updatedItem.id ? updatedItem : item
-            )
-          );
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "DELETE",
-          schema: "public",
-          table: "items",
-        },
-        (payload) => {
-          const deletedItem = payload.old as { id: string };
-
-          setItems((currentItems) =>
-            currentItems.filter((item) => item.id !== deletedItem.id)
-          );
-        }
-      )
-      .subscribe((status) => {
-        console.log("Items realtime status:", status);
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [id]);
-
-  /*
-   * Add a new item.
-   */
-  const handleAddItem = async (
-  event: SubmitEvent<HTMLFormElement>
-) => {
-  event.preventDefault();
-
-  if (!id || !user) return;
-
-  const trimmedName = itemName.trim();
-  const trimmedQuantity = quantity.trim();
-  const trimmedCategory = category.trim();
-
-  if (!trimmedName) return;
-
-  const optimisticId = crypto.randomUUID();
-
-  const optimisticItem: Item = {
-    id: optimisticId,
-    list_id: id,
-    name: trimmedName,
-    quantity: trimmedQuantity || null,
-    category: trimmedCategory || null,
-    completed: false,
-    created_by: user.id,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
-
-  // Show the item immediately.
-  setItems((currentItems) => [
-    ...currentItems,
-    optimisticItem,
-  ]);
-
-  // Clear the form immediately.
-  setItemName("");
-  setQuantity("");
-  setCategory("");
-
-  try {
-    setAddingItem(true);
-    setError("");
-
-    const { data, error } = await supabase
-      .from("items")
-      .insert({
-        id: optimisticId,
-        list_id: id,
-        name: trimmedName,
-        quantity: trimmedQuantity || null,
-        category: trimmedCategory || null,
-        completed: false,
-        created_by: user.id,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      throw error;
-    }
-
-    // Replace the optimistic item with the real database row.
-    setItems((currentItems) =>
-      currentItems.map((item) =>
-        item.id === optimisticId
-          ? data
-          : item
-      )
-    );
-  } catch (error) {
-    console.error("Error adding item:", error);
-
-    // Roll back the optimistic item.
-    setItems((currentItems) =>
-      currentItems.filter(
-        (item) => item.id !== optimisticId
-      )
-    );
-
-    setError(
-      error instanceof Error
-        ? error.message
-        : "Failed to add item."
-    );
-  } finally {
-    setAddingItem(false);
-  }
-};
-
-  /*
-   * Toggle an item's completed state.
-   *
-   * This uses an optimistic update:
-   *
-   * 1. Update the UI immediately.
-   * 2. Send the request to Supabase.
-   * 3. If Supabase fails, restore the previous value.
-   */
-  const handleToggleItem = async (
-    itemId: string,
-    completed: boolean
-  ) => {
-    const previousItem = items.find(
-      (item) => item.id === itemId
-    );
-
-    if (!previousItem) return;
-
-    /*
-     * Optimistic update.
-     *
-     * The UI changes immediately without waiting
-     * for Supabase.
-     */
-    setItems((currentItems) =>
-      currentItems.map((item) =>
-        item.id === itemId
-          ? { ...item, completed }
-          : item
-      )
-    );
-
-    /*
-     * Send the change to Supabase.
-     */
-    const { error } = await supabase
-      .from("items")
-      .update({ completed })
-      .eq("id", itemId);
-
-    /*
-     * Rollback if the request failed.
-     */
-    if (error) {
-      console.error("Error updating item:", error);
-
-      setItems((currentItems) =>
-        currentItems.map((item) =>
-          item.id === itemId
-            ? {
-                ...item,
-                completed: previousItem.completed,
-              }
-            : item
-        )
-      );
-    }
-  };
-
-  /*
-   * Delete an item.
-   */
- const handleDeleteItem = async (itemId: string) => {
-  const previousItem = items.find(
-    (item) => item.id === itemId
-  );
-
-  if (!previousItem) return;
-
-  // Remove the item immediately from the UI.
-  setItems((currentItems) =>
-    currentItems.filter(
-      (item) => item.id !== itemId
-    )
-  );
-
-  try {
-    setError("");
-
-    const { error } = await supabase
-      .from("items")
-      .delete()
-      .eq("id", itemId);
-
-    if (error) {
-      throw error;
-    }
-  } catch (error) {
-    console.error("Error deleting item:", error);
-
-    // Roll back the deletion.
-    setItems((currentItems) => [
-      ...currentItems,
-      previousItem,
-    ]);
-
-    setError(
-      error instanceof Error
-        ? error.message
-        : "Failed to delete item."
-    );
-  }
-};
 
   /*
    * Create an invite link.
@@ -391,28 +65,15 @@ const ListPage = () => {
 
     try {
       setCreatingInvite(true);
-      setError("");
 
-      const { data: token, error } = await supabase.rpc(
-        "create_list_invite",
-        {
-          p_list_id: id,
-          p_expires_at: null,
-        }
-      );
-
-      if (error) {
-        console.error("Create invite error:", error);
-        setError(error.message);
-        return;
-      }
-
-      const link = `${window.location.origin}/invite/${token}`;
+      const link = await createListInvite(id);
 
       setInviteLink(link);
     } catch (error) {
-      console.error("Unexpected error creating invite:", error);
-      setError("Something went wrong while creating the invite.");
+      console.error(
+        "Error creating invite:",
+        error
+      );
     } finally {
       setCreatingInvite(false);
     }
@@ -427,16 +88,23 @@ const ListPage = () => {
     try {
       setCopyingInvite(true);
 
-      await navigator.clipboard.writeText(inviteLink);
+      await navigator.clipboard.writeText(
+        inviteLink
+      );
     } catch (error) {
-      console.error("Copy invite error:", error);
-      setError("Unable to copy the invite link.");
+      console.error(
+        "Error copying invite:",
+        error
+      );
     } finally {
       setCopyingInvite(false);
     }
   };
 
-  if (loading) {
+  /*
+   * Loading state.
+   */
+  if (listLoading) {
     return (
       <main>
         <p>Loading list...</p>
@@ -444,11 +112,14 @@ const ListPage = () => {
     );
   }
 
-  if (error && !list) {
+  /*
+   * List loading error.
+   */
+  if (listError && !list) {
     return (
       <main>
         <h1>Unable to load list</h1>
-        <p>{error}</p>
+        <p>{listError}</p>
 
         <Link to="/lists">
           Back to My Lists
@@ -457,6 +128,9 @@ const ListPage = () => {
     );
   }
 
+  /*
+   * List does not exist.
+   */
   if (!list) {
     return (
       <main>
@@ -469,7 +143,16 @@ const ListPage = () => {
     );
   }
 
-  const isOwner = user?.id === list.created_by;
+  const isOwner =
+    user?.id === list.created_by;
+
+  /*
+   * Combine item errors for now.
+   *
+   * We'll eventually move all page-level error
+   * handling into a reusable component.
+   */
+  const itemError = itemsError;
 
   return (
     <main>
@@ -479,8 +162,8 @@ const ListPage = () => {
 
       <h1>{list.name}</h1>
 
-      {error && (
-        <p>{error}</p>
+      {itemError && (
+        <p>{itemError}</p>
       )}
 
       {/* Members */}
@@ -491,7 +174,10 @@ const ListPage = () => {
         <h2>Currently Viewing</h2>
 
         {onlineUsers.length === 0 ? (
-          <p>No one is currently viewing this list.</p>
+          <p>
+            No one is currently viewing this
+            list.
+          </p>
         ) : (
           <ul>
             {onlineUsers.map((onlineUser) => (
@@ -527,7 +213,9 @@ const ListPage = () => {
                 onClick={handleCopyInvite}
                 disabled={copyingInvite}
               >
-                {copyingInvite ? "Copied" : "Copy Link"}
+                {copyingInvite
+                  ? "Copied"
+                  : "Copy Link"}
               </button>
             </div>
           )}
@@ -538,7 +226,42 @@ const ListPage = () => {
       <section>
         <h2>Add Item</h2>
 
-        <form onSubmit={handleAddItem}>
+        <form
+          onSubmit={(event) => {
+            const form = event.currentTarget;
+
+            const formData = new FormData(form);
+
+            const name =
+              String(
+                formData.get("item-name") ?? ""
+              );
+
+            const quantity =
+              String(
+                formData.get("item-quantity") ?? ""
+              );
+
+            const category =
+              String(
+                formData.get("item-category") ?? ""
+              );
+
+            addItem(
+              event,
+              name,
+              quantity,
+              category
+            );
+
+            /*
+             * Reset the form immediately because
+             * the optimistic item has already been
+             * added to the UI.
+             */
+            form.reset();
+          }}
+        >
           <div>
             <label htmlFor="item-name">
               Item name
@@ -546,11 +269,8 @@ const ListPage = () => {
 
             <input
               id="item-name"
+              name="item-name"
               type="text"
-              value={itemName}
-              onChange={(event) =>
-                setItemName(event.target.value)
-              }
               placeholder="Milk"
             />
           </div>
@@ -562,11 +282,8 @@ const ListPage = () => {
 
             <input
               id="item-quantity"
+              name="item-quantity"
               type="text"
-              value={quantity}
-              onChange={(event) =>
-                setQuantity(event.target.value)
-              }
               placeholder="2"
             />
           </div>
@@ -578,11 +295,8 @@ const ListPage = () => {
 
             <input
               id="item-category"
+              name="item-category"
               type="text"
-              value={category}
-              onChange={(event) =>
-                setCategory(event.target.value)
-              }
               placeholder="Groceries"
             />
           </div>
@@ -591,7 +305,9 @@ const ListPage = () => {
             type="submit"
             disabled={addingItem}
           >
-            {addingItem ? "Adding..." : "Add Item"}
+            {addingItem
+              ? "Adding..."
+              : "Add Item"}
           </button>
         </form>
       </section>
@@ -600,7 +316,9 @@ const ListPage = () => {
       <section>
         <h2>Items</h2>
 
-        {items.length === 0 ? (
+        {itemsLoading ? (
+          <p>Loading items...</p>
+        ) : items.length === 0 ? (
           <p>No items yet.</p>
         ) : (
           <ul>
@@ -611,7 +329,7 @@ const ListPage = () => {
                     type="checkbox"
                     checked={item.completed}
                     onChange={(event) =>
-                      handleToggleItem(
+                      toggleItem(
                         item.id,
                         event.target.checked
                       )
@@ -640,7 +358,7 @@ const ListPage = () => {
                 <button
                   type="button"
                   onClick={() =>
-                    handleDeleteItem(item.id)
+                    deleteItemById(item.id)
                   }
                 >
                   Delete
