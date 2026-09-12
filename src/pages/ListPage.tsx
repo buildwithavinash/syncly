@@ -6,13 +6,18 @@ import { usePresence } from "../hooks/usePresence";
 import { useList } from "../hooks/useList";
 import { useListItems } from "../hooks/useListItems";
 
-import { createListInvite } from "../services/listService";
-
 import MembersList from "../components/lists/MembersList";
+import AddItemForm from "../components/lists/AddItemForm";
+import ItemList from "../components/lists/ItemList";
+import PresenceList from "../components/lists/PresenceList";
+import ShareList from "../components/lists/ShareList";
+import ListHeader from "../components/lists/ListHeader";
 
 const ListPage = () => {
   const { id } = useParams();
   const { user } = useAuth();
+  const [shareError, setShareError] =
+  useState("");
 
   /*
    * List data.
@@ -36,14 +41,6 @@ const ListPage = () => {
     deleteItemById,
   } = useListItems(id, user?.id);
 
-  /*
-   * Invite state.
-   */
-  const [inviteLink, setInviteLink] = useState("");
-  const [creatingInvite, setCreatingInvite] =
-    useState(false);
-  const [copyingInvite, setCopyingInvite] =
-    useState(false);
 
   /*
    * Presence.
@@ -57,49 +54,6 @@ const ListPage = () => {
     userName
   );
 
-  /*
-   * Create an invite link.
-   */
-  const handleCreateInvite = async () => {
-    if (!id) return;
-
-    try {
-      setCreatingInvite(true);
-
-      const link = await createListInvite(id);
-
-      setInviteLink(link);
-    } catch (error) {
-      console.error(
-        "Error creating invite:",
-        error
-      );
-    } finally {
-      setCreatingInvite(false);
-    }
-  };
-
-  /*
-   * Copy the generated invite link.
-   */
-  const handleCopyInvite = async () => {
-    if (!inviteLink) return;
-
-    try {
-      setCopyingInvite(true);
-
-      await navigator.clipboard.writeText(
-        inviteLink
-      );
-    } catch (error) {
-      console.error(
-        "Error copying invite:",
-        error
-      );
-    } finally {
-      setCopyingInvite(false);
-    }
-  };
 
   /*
    * Loading state.
@@ -156,11 +110,12 @@ const ListPage = () => {
 
   return (
     <main>
-      <Link to="/lists">
-        ← Back to My Lists
-      </Link>
+     <ListHeader listName={list.name} />
 
-      <h1>{list.name}</h1>
+      {shareError && (
+  <p>{shareError}</p>
+)}
+
 
       {itemError && (
         <p>{itemError}</p>
@@ -170,204 +125,29 @@ const ListPage = () => {
       <MembersList listId={list.id} />
 
       {/* Presence */}
-      <section>
-        <h2>Currently Viewing</h2>
-
-        {onlineUsers.length === 0 ? (
-          <p>
-            No one is currently viewing this
-            list.
-          </p>
-        ) : (
-          <ul>
-            {onlineUsers.map((onlineUser) => (
-              <li key={onlineUser.userId}>
-                🟢 {onlineUser.name}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <PresenceList onlineUsers={onlineUsers} />
 
       {/* Owner-only sharing */}
       {isOwner && (
-        <section>
-          <h2>Share List</h2>
-
-          <button
-            type="button"
-            onClick={handleCreateInvite}
-            disabled={creatingInvite}
-          >
-            {creatingInvite
-              ? "Creating..."
-              : "Create Invite Link"}
-          </button>
-
-          {inviteLink && (
-            <div>
-              <p>{inviteLink}</p>
-
-              <button
-                type="button"
-                onClick={handleCopyInvite}
-                disabled={copyingInvite}
-              >
-                {copyingInvite
-                  ? "Copied"
-                  : "Copy Link"}
-              </button>
-            </div>
-          )}
-        </section>
+         <ShareList
+    listId={list.id}
+    onError={setShareError}
+  />
       )}
 
       {/* Add item */}
-      <section>
-        <h2>Add Item</h2>
-
-        <form
-          onSubmit={(event) => {
-            const form = event.currentTarget;
-
-            const formData = new FormData(form);
-
-            const name =
-              String(
-                formData.get("item-name") ?? ""
-              );
-
-            const quantity =
-              String(
-                formData.get("item-quantity") ?? ""
-              );
-
-            const category =
-              String(
-                formData.get("item-category") ?? ""
-              );
-
-            addItem(
-              event,
-              name,
-              quantity,
-              category
-            );
-
-            /*
-             * Reset the form immediately because
-             * the optimistic item has already been
-             * added to the UI.
-             */
-            form.reset();
-          }}
-        >
-          <div>
-            <label htmlFor="item-name">
-              Item name
-            </label>
-
-            <input
-              id="item-name"
-              name="item-name"
-              type="text"
-              placeholder="Milk"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="item-quantity">
-              Quantity
-            </label>
-
-            <input
-              id="item-quantity"
-              name="item-quantity"
-              type="text"
-              placeholder="2"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="item-category">
-              Category
-            </label>
-
-            <input
-              id="item-category"
-              name="item-category"
-              type="text"
-              placeholder="Groceries"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={addingItem}
-          >
-            {addingItem
-              ? "Adding..."
-              : "Add Item"}
-          </button>
-        </form>
-      </section>
+      <AddItemForm
+  addingItem={addingItem}
+  onAddItem={addItem}
+/>
 
       {/* Items */}
-      <section>
-        <h2>Items</h2>
-
-        {itemsLoading ? (
-          <p>Loading items...</p>
-        ) : items.length === 0 ? (
-          <p>No items yet.</p>
-        ) : (
-          <ul>
-            {items.map((item) => (
-              <li key={item.id}>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={item.completed}
-                    onChange={(event) =>
-                      toggleItem(
-                        item.id,
-                        event.target.checked
-                      )
-                    }
-                  />
-
-                  <span>
-                    {item.name}
-                  </span>
-                </label>
-
-                {item.quantity && (
-                  <span>
-                    {" "}
-                    — {item.quantity}
-                  </span>
-                )}
-
-                {item.category && (
-                  <span>
-                    {" "}
-                    — {item.category}
-                  </span>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    deleteItemById(item.id)
-                  }
-                >
-                  Delete
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <ItemList
+  items={items}
+  loading={itemsLoading}
+  onToggleItem={toggleItem}
+  onDeleteItem={deleteItemById}
+/>
     </main>
   );
 };
