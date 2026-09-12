@@ -1,2 +1,115 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Reckless";
+  src: url("./assets/fonts/reckless/RecklessStandardS-TRIAL-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Reckless";
+  src: url("./assets/fonts/reckless/RecklessStandardS-TRIAL-RegularItalic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Reckless";
+  src: url("./assets/fonts/reckless/RecklessStandardS-TRIAL-Medium.otf") format("opentype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Switzer";
+  src: url("./assets/fonts/switzer/Switzer-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Switzer";
+  src: url("./assets/fonts/switzer/Switzer-Medium.otf") format("opentype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Switzer";
+  src: url("./assets/fonts/switzer/Switzer-Semibold.otf") format("opentype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+/*
+ * Design tokens.
+ *
+ * Everything the app's look depends on lives here. Change a
+ * value in this block and it cascades to every component,
+ * since components only ever reach for the generated
+ * utilities (bg-surface, text-ink, font-display, etc.),
+ * never raw hex values.
+ */
+@theme {
+  --color-bg: #faf9f8;
+  --color-surface: #f3f2ee;
+  --color-ink: #1a1b1e;
+  --color-slate: #6b6d76;
+  --color-border: #e4e3de;
+  --color-border-strong: #d1cfc7;
+
+  --color-accent: #2d6ff2;
+  --color-accent-tint: #eaf1fe;
+  --color-accent-ink: #0c447c;
+
+  --color-success: #3b7a57;
+  --color-success-tint: #e6f1eb;
+
+  --color-danger: #c1443b;
+  --color-danger-tint: #fbeae9;
+
+  --font-display: "Reckless", "Georgia", serif;
+  --font-sans: "Switzer", "system-ui", sans-serif;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+
+  --spacing-gutter: 1.25rem;
+  --spacing-section: 3rem;
+  --spacing-container: 75rem;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    @apply bg-bg text-ink font-sans;
+  }
+}
+
+@layer utilities {
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-toast-in {
+    animation: toast-in 200ms ease-out;
+  }
+}
