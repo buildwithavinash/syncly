@@ -1,4 +1,5 @@
-import { useState } from "react";
+import ItemGroup from "./ItemGroup";
+import CompletedItems from "./CompletedItems";
 
 import type { Item } from "../../services/itemService";
 
@@ -14,15 +15,17 @@ type ItemListProps = {
   ) => Promise<void>;
 };
 
+type ItemGroupData = {
+  category: string;
+  items: Item[];
+};
+
 const ItemList = ({
   items,
   loading,
   onToggleItem,
   onDeleteItem,
 }: ItemListProps) => {
-  const [completedOpen, setCompletedOpen] =
-    useState(false);
-
   if (loading) {
     return (
       <section>
@@ -41,6 +44,9 @@ const ItemList = ({
     );
   }
 
+  /*
+   * Separate active and completed items.
+   */
   const activeItems = items.filter(
     (item) => !item.completed
   );
@@ -49,117 +55,56 @@ const ItemList = ({
     (item) => item.completed
   );
 
+  /*
+   * Group active items by category.
+   */
+  const groupedItems = activeItems.reduce<
+    ItemGroupData[]
+  >((groups, item) => {
+    const category =
+      item.category?.trim() ||
+      "Uncategorized";
+
+    const existingGroup = groups.find(
+      (group) =>
+        group.category === category
+    );
+
+    if (existingGroup) {
+      existingGroup.items.push(item);
+    } else {
+      groups.push({
+        category,
+        items: [item],
+      });
+    }
+
+    return groups;
+  }, []);
+
   return (
     <section>
       <h2>Items</h2>
 
-      {activeItems.length > 0 && (
-        <ul>
-          {activeItems.map((item) => (
-            <li key={item.id}>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={item.completed}
-                  onChange={(event) =>
-                    onToggleItem(
-                      item.id,
-                      event.target.checked
-                    )
-                  }
-                />
-
-                <span>{item.name}</span>
-              </label>
-
-              {item.quantity && (
-                <span>
-                  {" "}
-                  — {item.quantity}
-                </span>
-              )}
-
-              {item.category && (
-                <span>
-                  {" "}
-                  — {item.category}
-                </span>
-              )}
-
-              <button
-                type="button"
-                onClick={() =>
-                  onDeleteItem(item.id)
-                }
-              >
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
+      {activeItems.length === 0 ? (
+        <p>All items are completed.</p>
+      ) : (
+        groupedItems.map((group) => (
+          <ItemGroup
+            key={group.category}
+            category={group.category}
+            items={group.items}
+            onToggleItem={onToggleItem}
+            onDeleteItem={onDeleteItem}
+          />
+        ))
       )}
 
-      {completedItems.length > 0 && (
-        <div>
-          <button
-            type="button"
-            onClick={() =>
-              setCompletedOpen(
-                (current) => !current
-              )
-            }
-          >
-            Completed ({completedItems.length})
-            {completedOpen ? " ▲" : " ▼"}
-          </button>
-
-          {completedOpen && (
-            <ul>
-              {completedItems.map((item) => (
-                <li key={item.id}>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={item.completed}
-                      onChange={(event) =>
-                        onToggleItem(
-                          item.id,
-                          event.target.checked
-                        )
-                      }
-                    />
-
-                    <span>{item.name}</span>
-                  </label>
-
-                  {item.quantity && (
-                    <span>
-                      {" "}
-                      — {item.quantity}
-                    </span>
-                  )}
-
-                  {item.category && (
-                    <span>
-                      {" "}
-                      — {item.category}
-                    </span>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      onDeleteItem(item.id)
-                    }
-                  >
-                    Delete
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
+      <CompletedItems
+        items={completedItems}
+        onToggleItem={onToggleItem}
+        onDeleteItem={onDeleteItem}
+      />
     </section>
   );
 };
