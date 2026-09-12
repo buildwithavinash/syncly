@@ -16,6 +16,7 @@ export type PublicList = {
 export type PublicListData = {
   list: PublicList;
   items: PublicListItem[];
+  is_member: boolean;
 };
 
 export const getPublicListByInvite = async (

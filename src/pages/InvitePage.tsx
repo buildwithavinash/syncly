@@ -1,10 +1,12 @@
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 
 import { useAuth } from "../context/AuthContext";
 import { usePublicList } from "../hooks/usePublicList";
+import { useAcceptInvite } from "../hooks/useAcceptInvite";
 
 const InvitePage = () => {
   const { token } = useParams();
+  const navigate = useNavigate();
 
   const { user } = useAuth();
 
@@ -13,6 +15,12 @@ const InvitePage = () => {
     loading,
     error,
   } = usePublicList(token);
+
+  const {
+    accepting,
+    error: acceptError,
+    acceptInvite,
+  } = useAcceptInvite();
 
   if (loading) {
     return <p>Loading shared list...</p>;
@@ -35,6 +43,7 @@ const InvitePage = () => {
     return (
       <main>
         <h1>List not found</h1>
+
         <Link to="/">
           Go to Syncly
         </Link>
@@ -49,6 +58,17 @@ const InvitePage = () => {
   const completedItems = data.items.filter(
     (item) => item.completed
   );
+
+  const handleAcceptInvite = async () => {
+    if (!token) return;
+
+    const listId =
+      await acceptInvite(token);
+
+    if (listId) {
+      navigate(`/lists/${listId}`);
+    }
+  };
 
   return (
     <main>
@@ -123,22 +143,56 @@ const InvitePage = () => {
       <section>
         {user ? (
           <div>
-            <p>
-              You're logged in. Open this list
-              to start collaborating.
-            </p>
+    {data.is_member ? (
+      <>
+        <h2>You are already a member</h2>
 
-            <Link
-              to={`/lists/${data.list.id}`}
-            >
-              Open List
-            </Link>
-          </div>
+        <p>
+          You already have access to this
+          list.
+        </p>
+
+        <button
+          type="button"
+          onClick={() =>
+            navigate(`/lists/${data.list.id}`)
+          }
+        >
+          Open List
+        </button>
+      </>
+    ) : (
+      <>
+        <h2>Join this list</h2>
+
+        <p>
+          Accept the invite to start
+          collaborating on this list.
+        </p>
+
+        <button
+          type="button"
+          onClick={handleAcceptInvite}
+          disabled={accepting}
+        >
+          {accepting
+            ? "Joining..."
+            : "Join List"}
+        </button>
+
+        {acceptError && (
+          <p>{acceptError}</p>
+        )}
+      </>
+    )}
+  </div>
         ) : (
           <div>
+            <h2>Want to collaborate?</h2>
+
             <p>
-              Want to add or manage items?
-              Create an account or log in.
+              Create an account or log in to
+              join this list.
             </p>
 
             <Link
