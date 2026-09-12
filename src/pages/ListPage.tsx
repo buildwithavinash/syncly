@@ -12,12 +12,19 @@ import ItemList from "../components/lists/ItemList";
 import PresenceList from "../components/lists/PresenceList";
 import ShareList from "../components/lists/ShareList";
 import ListHeader from "../components/lists/ListHeader";
+import { useActivityLog } from "../hooks/useActivityLog";
+import ActivityLog from "../components/lists/ActivityLog";
 
 const ListPage = () => {
   const { id } = useParams();
   const { user } = useAuth();
   const [shareError, setShareError] =
   useState("");
+  const {
+  activities,
+  loading: activityLoading,
+  error: activityError,
+} = useActivityLog(id);
 
   /*
    * List data.
@@ -147,6 +154,12 @@ const ListPage = () => {
   loading={itemsLoading}
   onToggleItem={toggleItem}
   onDeleteItem={deleteItemById}
+/>
+
+<ActivityLog
+  activities={activities}
+  loading={activityLoading}
+  error={activityError}
 />
     </main>
   );
