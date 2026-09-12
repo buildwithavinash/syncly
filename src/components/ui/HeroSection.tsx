@@ -1,34 +1,42 @@
+import { Link } from "react-router";
+import { ArrowRight } from "lucide-react";
+import ImagePlaceholder from "../common/ImagePlaceholder";
+
 const HeroSection = () => {
   return (
-    <main className="h-[80vh] flex items-center justify-center">
-      <div className="grid grid-cols-2 gap-4 max-w-5xl px-4">
-        {/* text */}
-        <div className="flex flex-col">
-          <h3 className="text-5xl text-slate-900">
-            Shared lists, always in sync.
-          </h3>
+    <section className="mx-auto max-w-container px-gutter pt-14 pb-section sm:pt-20">
+      <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-14">
+        <div>
+          <h1 className="font-display text-4xl leading-[1.1] text-ink sm:text-5xl lg:text-6xl">
+            Plan it <span className="italic">together.</span>
+          </h1>
 
-          <p className="text-slate-600 mt-2">
-            Create lists, share them with your people, and keep everyone on the
-            same page in real time. Perfect for groceries, trips, tasks, and
-            everything you need to get done together.
+          <p className="mt-5 max-w-md text-base leading-relaxed text-slate sm:text-lg">
+            Cartify keeps grocery runs, trips, and shared to-dos in one
+            list — updated the moment someone else moves in it.
           </p>
 
-          <a
-            href=""
-            className="border border-slate-300 px-4 py-2 mt-3 rounded-md self-start"
-          >
-            Get Started
-          </a>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <Link
+              to="/signup"
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-5 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90"
+            >
+              Get started
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+
+            
+              <a href="#how-it-works"
+              className="inline-flex items-center justify-center rounded-md border border-border px-5 py-3 text-sm text-ink transition-colors hover:border-border-strong"
+            >
+              See how it works
+            </a>
+          </div>
         </div>
 
-        {/* visual */}
-        <div className="bg-slate-400 p-1">
-          {/* img later */}
-          <div className="bg-red-300 ">ss</div>
-        </div>
+        <ImagePlaceholder label="Add product screenshot — list detail view" />
       </div>
-    </main>
+    </section>
   );
 };
 
