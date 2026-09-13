@@ -1,6 +1,14 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
-import { ArrowLeft, Users, History, Link2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Users,
+  History,
+  Link2,
+  MoreVertical,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { createListInvite } from "../../services/listService";
 import { useToast } from "../../context/ToastContext";
 
@@ -10,6 +18,8 @@ type ListHeaderProps = {
   onlineCount: number;
   onOpenMembers: () => void;
   onOpenActivity: () => void;
+  onOpenRename: () => void;
+  onOpenDelete: () => void;
 };
 
 const ListHeader = ({
@@ -18,9 +28,32 @@ const ListHeader = ({
   onlineCount,
   onOpenMembers,
   onOpenActivity,
+  onOpenRename,
+  onOpenDelete,
 }: ListHeaderProps) => {
   const [sharing, setSharing] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(event.target as Node)
+      ) {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [menuOpen]);
 
   const handleShare = async () => {
     try {
@@ -88,6 +121,48 @@ const ListHeader = ({
           >
             <Link2 className="h-4 w-4" />
           </button>
+        )}
+
+        {isOwner && (
+          <div className="relative" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((current) => !current)}
+              aria-label="List options"
+              aria-expanded={menuOpen}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-ink transition-colors hover:border-border-strong hover:bg-surface"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </button>
+
+            {menuOpen && (
+              <div className="absolute right-0 top-full z-40 mt-2 w-44 rounded-md border border-border bg-bg p-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onOpenRename();
+                  }}
+                  className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-left text-sm text-ink transition-colors hover:bg-surface"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  Rename list
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onOpenDelete();
+                  }}
+                  className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-left text-sm text-danger transition-colors hover:bg-danger-tint"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete list
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </header>

@@ -41,3 +41,29 @@ export const createListInvite = async (
 
   return `${window.location.origin}/invite/${token}`;
 };
+
+export const updateListName = async (
+  listId: string,
+  name: string
+): Promise<List> => {
+  const { data, error } = await supabase
+    .from("lists")
+    .update({ name })
+    .eq("id", listId)
+    .select()
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
+export const deleteList = async (listId: string): Promise<void> => {
+  const { error } = await supabase.from("lists").delete().eq("id", listId);
+
+  if (error) {
+    throw error;
+  }
+};

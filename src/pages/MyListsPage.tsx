@@ -1,10 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
-import { ArrowLeft, Plus, ListChecks } from "lucide-react";
-import Loader from "../components/common/Loader";
-import { formatDisplayText } from "../lib/formatters";
+import {
+  ArrowLeft,
+  Plus,
+  ListChecks,
+  MoreVertical,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
+import { updateListName, deleteList } from "../services/listService";
+import Modal from "../components/common/Modal";
+import ConfirmModal from "../components/common/ConfirmModal";
+import Loader from "../components/common/Loader";
 
 type List = {
   id: string;
@@ -18,12 +28,100 @@ type ListWithRole = List & {
   role: string;
 };
 
+const CardMenu = ({
+  list,
+  onRename,
+  onDelete,
+}: {
+  list: ListWithRole;
+  onRename: (list: ListWithRole) => void;
+  onDelete: (list: ListWithRole) => void;
+}) => {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [open]);
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <button
+        type="button"
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          setOpen((current) => !current);
+        }}
+        aria-label="List options"
+        className="flex h-7 w-7 items-center justify-center rounded-full text-slate transition-colors hover:bg-surface hover:text-ink"
+      >
+        <MoreVertical className="h-4 w-4" />
+      </button>
+
+      {open && (
+        <div
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+          }}
+          className="absolute right-0 top-full z-40 mt-1 w-40 rounded-md border border-border bg-bg p-1.5"
+        >
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              onRename(list);
+            }}
+            className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-left text-sm text-ink transition-colors hover:bg-surface"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            Rename
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              onDelete(list);
+            }}
+            className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-left text-sm text-danger transition-colors hover:bg-danger-tint"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const MyListsPage = () => {
   const { user } = useAuth();
+  const { showToast } = useToast();
 
   const [lists, setLists] = useState<ListWithRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const [pendingRename, setPendingRename] = useState<ListWithRole | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [renaming, setRenaming] = useState(false);
+
+  const [pendingDelete, setPendingDelete] = useState<ListWithRole | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const fetchLists = async () => {
@@ -88,6 +186,61 @@ const MyListsPage = () => {
 
     fetchLists();
   }, [user]);
+
+  const handleOpenRename = (list: ListWithRole) => {
+    setRenameValue(list.name);
+    setPendingRename(list);
+  };
+
+  const handleConfirmRename = async () => {
+    if (!pendingRename) return;
+
+    const trimmedName = renameValue.trim();
+
+    if (!trimmedName) return;
+
+    try {
+      setRenaming(true);
+
+      const updated = await updateListName(pendingRename.id, trimmedName);
+
+      setLists((current) =>
+        current.map((list) =>
+          list.id === updated.id ? { ...list, name: updated.name } : list
+        )
+      );
+
+      setPendingRename(null);
+      showToast("List renamed");
+    } catch (err) {
+      console.error("Error renaming list:", err);
+      showToast("Couldn't rename list", "error");
+    } finally {
+      setRenaming(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!pendingDelete) return;
+
+    try {
+      setDeleting(true);
+
+      await deleteList(pendingDelete.id);
+
+      setLists((current) =>
+        current.filter((list) => list.id !== pendingDelete.id)
+      );
+
+      setPendingDelete(null);
+      showToast("List deleted");
+    } catch (err) {
+      console.error("Error deleting list:", err);
+      showToast("Couldn't delete list", "error");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <main className="mx-auto max-w-container px-gutter pb-24">
@@ -154,8 +307,8 @@ const MyListsPage = () => {
                   className="rounded-lg border border-border bg-bg p-4 transition-colors hover:border-border-strong"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-display text-base text-ink">
-                      {formatDisplayText(list.name)}
+                    <h3 className="truncate font-display text-base text-ink">
+                      {list.name}
                     </h3>
 
                     <span
@@ -169,15 +322,75 @@ const MyListsPage = () => {
                     </span>
                   </div>
 
-                  <p className="mt-2 text-xs text-slate">
-                    Created {new Date(list.created_at).toLocaleDateString()}
-                  </p>
+                  <div className="mt-2 flex items-center justify-between">
+                    <p className="text-xs text-slate">
+                      Created {new Date(list.created_at).toLocaleDateString()}
+                    </p>
+
+                    {list.role === "owner" && (
+                      <CardMenu
+                        list={list}
+                        onRename={handleOpenRename}
+                        onDelete={setPendingDelete}
+                      />
+                    )}
+                  </div>
                 </Link>
               ))}
             </div>
           )}
         </div>
       )}
+
+      <Modal
+        isOpen={pendingRename !== null}
+        onClose={() => setPendingRename(null)}
+        title="Rename list"
+      >
+        <div className="flex flex-col gap-4">
+          <input
+            type="text"
+            value={renameValue}
+            onChange={(event) => setRenameValue(event.target.value)}
+            autoFocus
+            className="w-full rounded-md border border-border bg-bg px-3 py-2.5 text-sm text-ink placeholder:text-slate/70 transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+          />
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setPendingRename(null)}
+              disabled={renaming}
+              className="flex-1 rounded-md border border-border py-2 text-sm text-ink transition-colors hover:border-border-strong disabled:opacity-60"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="button"
+              onClick={handleConfirmRename}
+              disabled={renaming || !renameValue.trim()}
+              className="flex-1 rounded-md bg-accent py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+            >
+              {renaming ? "Saving..." : "Save"}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <ConfirmModal
+        isOpen={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete this list?"
+        description={
+          pendingDelete
+            ? `"${pendingDelete.name}" and everything in it will be permanently removed.`
+            : ""
+        }
+        confirmLabel="Delete list"
+        confirming={deleting}
+      />
     </main>
   );
 };
