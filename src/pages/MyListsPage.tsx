@@ -87,108 +87,95 @@ const MyListsPage = () => {
     fetchLists();
   }, [user]);
 
-  if (loading) {
-    return (
-      <main className="relative min-h-screen px-gutter py-12">
+  return (
+    <main className="mx-auto max-w-container px-gutter pb-24">
+      <header className="sticky top-0 z-30 -mx-gutter flex items-center gap-3 border-b border-border bg-bg/90 px-gutter py-4 backdrop-blur">
         <Link
           to="/"
           aria-label="Back to Cartify"
-          className="absolute left-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-border text-ink transition-colors hover:border-border-strong hover:bg-surface sm:left-6 sm:top-6"
+          className="flex h-9 w-9 shrink-0 items-center justify-center text-ink transition-colors hover:text-slate"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-5 w-5" />
         </Link>
 
-        <div className="mx-auto max-w-container pt-14">
-          <h1 className="font-display text-2xl text-ink">Your lists</h1>
-          <p className="mt-6 text-sm text-slate">Loading your lists...</p>
-        </div>
-      </main>
-    );
-  }
+        <h1 className="min-w-0 flex-1 truncate font-display text-xl text-ink sm:text-2xl">
+          Your lists
+        </h1>
 
-  return (
-    <main className="relative min-h-screen px-gutter py-12">
-      <Link
-        to="/"
-        aria-label="Back to Cartify"
-        className="absolute left-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-border text-ink transition-colors hover:border-border-strong hover:bg-surface sm:left-6 sm:top-6"
-      >
-        <ArrowLeft className="h-4 w-4" />
-      </Link>
+        <Link
+          to="/create-list"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+        >
+          <Plus className="h-4 w-4" />
+          New list
+        </Link>
+      </header>
 
-      <div className="mx-auto max-w-container pt-14">
-        <div className="mb-8 flex items-center justify-between">
-          <h1 className="font-display text-2xl text-ink">Your lists</h1>
-
-          <Link
-            to="/create-list"
-            className="inline-flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
-          >
-            <Plus className="h-4 w-4" />
-            New list
-          </Link>
-        </div>
-
-        {error && (
-          <p className="mb-6 rounded-md bg-danger-tint px-3 py-2 text-sm text-danger">
-            {error}
-          </p>
-        )}
-
-        {!error && lists.length === 0 && (
-          <div className="flex flex-col items-center rounded-lg border border-dashed border-border-strong py-16 text-center">
-            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-accent-tint">
-              <ListChecks className="h-5 w-5 text-accent-ink" />
-            </div>
-
-            <h2 className="font-display text-lg text-ink">No lists yet</h2>
-            <p className="mt-1.5 max-w-xs text-sm text-slate">
-              Create your first list, or join someone else's with an invite
-              link.
+      {loading ? (
+        <p className="pt-6 text-sm text-slate">Loading your lists...</p>
+      ) : (
+        <div className="pt-6">
+          {error && (
+            <p className="mb-6 rounded-md bg-danger-tint px-3 py-2 text-sm text-danger">
+              {error}
             </p>
+          )}
 
-            <Link
-              to="/create-list"
-              className="mt-5 inline-flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
-            >
-              <Plus className="h-4 w-4" />
-              Create a list
-            </Link>
-          </div>
-        )}
+          {!error && lists.length === 0 && (
+            <div className="flex flex-col items-center rounded-lg border border-dashed border-border-strong py-16 text-center">
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-accent-tint">
+                <ListChecks className="h-5 w-5 text-accent-ink" />
+              </div>
 
-        {lists.length > 0 && (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {lists.map((list) => (
+              <h2 className="font-display text-lg text-ink">No lists yet</h2>
+              <p className="mt-1.5 max-w-xs text-sm text-slate">
+                Create your first list, or join someone else's with an
+                invite link.
+              </p>
+
               <Link
-                key={list.id}
-                to={`/lists/${list.id}`}
-                className="rounded-lg border border-border bg-bg p-4 transition-colors hover:border-border-strong"
+                to="/create-list"
+                className="mt-5 inline-flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
               >
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-display text-base text-ink">
-                    {list.name}
-                  </h3>
-
-                  <span
-                    className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs ${
-                      list.role === "owner"
-                        ? "bg-accent-tint text-accent-ink"
-                        : "bg-surface text-slate"
-                    }`}
-                  >
-                    {list.role}
-                  </span>
-                </div>
-
-                <p className="mt-2 text-xs text-slate">
-                  Created {new Date(list.created_at).toLocaleDateString()}
-                </p>
+                <Plus className="h-4 w-4" />
+                Create a list
               </Link>
-            ))}
-          </div>
-        )}
-      </div>
+            </div>
+          )}
+
+          {lists.length > 0 && (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {lists.map((list) => (
+                <Link
+                  key={list.id}
+                  to={`/lists/${list.id}`}
+                  className="rounded-lg border border-border bg-bg p-4 transition-colors hover:border-border-strong"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-display text-base text-ink">
+                      {list.name}
+                    </h3>
+
+                    <span
+                      className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs ${
+                        list.role === "owner"
+                          ? "bg-accent-tint text-accent-ink"
+                          : "bg-surface text-slate"
+                      }`}
+                    >
+                      {list.role}
+                    </span>
+                  </div>
+
+                  <p className="mt-2 text-xs text-slate">
+                    Created {new Date(list.created_at).toLocaleDateString()}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </main>
   );
 };

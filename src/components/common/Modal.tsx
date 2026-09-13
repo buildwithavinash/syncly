@@ -44,10 +44,11 @@ const Modal = ({
   }
 
   const isSheet = variant === "sheet";
+  const hasHeader = Boolean(title || showCloseButton);
 
   return createPortal(
     <div
-      className="fixed inset-0 z-90 flex items-end justify-center bg-ink/45 sm:items-center"
+      className="fixed inset-0 z-[90] flex items-end justify-center bg-ink/45 sm:items-center sm:p-4"
       onClick={(event) => {
         if (event.target === event.currentTarget) {
           onClose();
@@ -58,18 +59,18 @@ const Modal = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? "modal-title" : undefined}
-        className={
+        className={`flex max-h-[85vh] w-full flex-col bg-bg ${
           isSheet
-            ? "w-full max-w-md rounded-t-lg bg-bg p-6 sm:rounded-lg"
-            : "w-full max-w-sm rounded-lg bg-bg p-6"
-        }
+            ? "max-w-md rounded-t-lg sm:rounded-lg"
+            : "max-w-sm rounded-lg"
+        }`}
       >
         {isSheet && (
-          <div className="mx-auto mb-4 h-1 w-8 rounded-full bg-border sm:hidden" />
+          <div className="mx-auto mt-3 h-1 w-8 shrink-0 rounded-full bg-border sm:hidden" />
         )}
 
-        {(title || showCloseButton) && (
-          <div className="mb-4 flex items-center justify-between">
+        {hasHeader && (
+          <div className="flex shrink-0 items-center justify-between border-b border-border px-6 py-4">
             {title && (
               <h2 id="modal-title" className="font-display text-lg text-ink">
                 {title}
@@ -89,7 +90,7 @@ const Modal = ({
           </div>
         )}
 
-        {children}
+        <div className="overflow-y-auto px-6 py-5">{children}</div>
       </div>
     </div>,
     document.body

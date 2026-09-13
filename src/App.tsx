@@ -1,4 +1,4 @@
-import { Route, Routes } from "react-router";
+import { Route, Routes, useLocation } from "react-router";
 import CreateListPage from "./pages/CreateListPage";
 import HomePage from "./pages/HomePage";
 import SignupPage from "./pages/SignupPage";
@@ -8,8 +8,17 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import ListPage from "./pages/ListPage";
 import InvitePage from "./pages/InvitePage";
 import MyListsPage from "./pages/MyListsPage";
+import FloatingNav from "./components/common/FloatingNav";
+
+const HIDDEN_FLOATING_NAV_PATHS = ["/login", "/signup"];
 
 const App = () => {
+  const location = useLocation();
+
+  const showFloatingNav = !HIDDEN_FLOATING_NAV_PATHS.includes(
+    location.pathname
+  );
+
   return (
     <>
       <Routes>
@@ -43,13 +52,13 @@ const App = () => {
         />
 
         <Route
-  path="/lists"
-  element={
-    <ProtectedRoute>
-      <MyListsPage />
-    </ProtectedRoute>
-  }
-/>
+          path="/lists"
+          element={
+            <ProtectedRoute>
+              <MyListsPage />
+            </ProtectedRoute>
+          }
+        />
 
         <Route path="/invite/:token" element={<InvitePage />} />
 
@@ -62,6 +71,8 @@ const App = () => {
           }
         />
       </Routes>
+
+      {showFloatingNav && <FloatingNav />}
     </>
   );
 };

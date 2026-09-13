@@ -18,18 +18,20 @@ const getInitials = (name: string) => {
 };
 
 const PresenceList = ({ onlineUsers }: PresenceListProps) => {
-  return (
-    <section className="py-5">
-      <div className="mb-3 flex items-center gap-2">
-        <span className="h-1.5 w-1.5 rounded-full bg-success" />
-        <h2 className="text-sm font-medium text-ink">
-          {onlineUsers.length === 0
-            ? "No one else is here"
-            : `${onlineUsers.length} here now`}
-        </h2>
-      </div>
+  const hasOnlineUsers = onlineUsers.length > 0;
 
-      {onlineUsers.length > 0 && (
+  return (
+    <section className="flex flex-wrap items-center gap-3 border-b border-border py-4">
+      <span className="flex shrink-0 items-center gap-1.5 text-sm text-slate">
+        <span
+          className={`h-1.5 w-1.5 rounded-full ${
+            hasOnlineUsers ? "bg-success" : "bg-border-strong"
+          }`}
+        />
+        {hasOnlineUsers ? `${onlineUsers.length} here now` : "No one else is here"}
+      </span>
+
+      {hasOnlineUsers && (
         <div className="flex flex-wrap gap-2">
           {onlineUsers.map((onlineUser) => (
             <div

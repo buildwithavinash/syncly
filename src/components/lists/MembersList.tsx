@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Users } from "lucide-react";
+import Loader from "../common/Loader";
 import { supabase } from "../../lib/supabase";
 
 type Member = {
@@ -10,7 +10,10 @@ type Member = {
 
 type MembersListProps = {
   listId: string;
+  onlineUserIds: string[];
 };
+
+type Tab = "all" | "active";
 
 const getInitials = (name: string) => {
   const parts = name.trim().split(/\s+/);
@@ -22,10 +25,11 @@ const getInitials = (name: string) => {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 };
 
-const MembersList = ({ listId }: MembersListProps) => {
+const MembersList = ({ listId, onlineUserIds }: MembersListProps) => {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState<Tab>("all");
 
   const fetchMembers = async () => {
     try {
@@ -87,9 +91,7 @@ const MembersList = ({ listId }: MembersListProps) => {
   useEffect(() => {
     const setupMembers = async () => {
       setLoading(true);
-
       await fetchMembers();
-
       setLoading(false);
     };
 
@@ -105,9 +107,7 @@ const MembersList = ({ listId }: MembersListProps) => {
           table: "list_members",
           filter: `list_id=eq.${listId}`,
         },
-        () => {
-          fetchMembers();
-        }
+        () => fetchMembers()
       )
       .on(
         "postgres_changes",
@@ -117,20 +117,12 @@ const MembersList = ({ listId }: MembersListProps) => {
           table: "list_members",
           filter: `list_id=eq.${listId}`,
         },
-        () => {
-          fetchMembers();
-        }
+        () => fetchMembers()
       )
       .on(
         "postgres_changes",
-        {
-          event: "DELETE",
-          schema: "public",
-          table: "list_members",
-        },
-        () => {
-          fetchMembers();
-        }
+        { event: "DELETE", schema: "public", table: "list_members" },
+        () => fetchMembers()
       )
       .subscribe((status) => {
         console.log("Members realtime status:", status);
@@ -142,64 +134,96 @@ const MembersList = ({ listId }: MembersListProps) => {
   }, [listId]);
 
   if (loading) {
-    return (
-      <section className="py-5">
-        <h2 className="mb-3 text-sm font-medium text-ink">Members</h2>
-        <p className="text-sm text-slate">Loading members...</p>
-      </section>
-    );
+    return <Loader label="Loading members..." />;
   }
 
   if (error) {
     return (
-      <section className="py-5">
-        <h2 className="mb-3 text-sm font-medium text-ink">Members</h2>
-        <p className="rounded-md bg-danger-tint px-3 py-2 text-sm text-danger">
-          {error}
-        </p>
-      </section>
+      <p className="rounded-md bg-danger-tint px-3 py-2 text-sm text-danger">
+        {error}
+      </p>
     );
   }
 
+  if (members.length === 0) {
+    return <p className="text-sm text-slate">No members found.</p>;
+  }
+
+  const activeMembers = members.filter((member) =>
+    onlineUserIds.includes(member.user_id)
+  );
+
+  const visibleMembers = activeTab === "active" ? activeMembers : members;
+
   return (
-    <section className="py-5">
-      <div className="mb-3 flex items-center gap-2">
-        <Users className="h-4 w-4 text-slate" />
-        <h2 className="text-sm font-medium text-ink">
-          Members {members.length > 0 && `(${members.length})`}
-        </h2>
+    <div>
+      <div className="mb-3 inline-flex rounded-full border border-border bg-surface p-1">
+        <button
+          type="button"
+          onClick={() => setActiveTab("all")}
+          className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+            activeTab === "all"
+              ? "bg-accent text-white"
+              : "text-slate hover:text-ink"
+          }`}
+        >
+          All ({members.length})
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("active")}
+          className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+            activeTab === "active"
+              ? "bg-accent text-white"
+              : "text-slate hover:text-ink"
+          }`}
+        >
+          Active now ({activeMembers.length})
+        </button>
       </div>
 
-      {members.length === 0 ? (
-        <p className="text-sm text-slate">No members found.</p>
+      {visibleMembers.length === 0 ? (
+        <p className="text-sm text-slate">No one is active right now.</p>
       ) : (
         <div className="flex flex-col divide-y divide-border rounded-lg border border-border">
-          {members.map((member) => (
-            <div
-              key={member.user_id}
-              className="flex items-center justify-between gap-3 px-4 py-3"
-            >
-              <div className="flex items-center gap-3">
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-tint text-xs font-medium text-accent-ink">
-                  {getInitials(member.name)}
-                </span>
-                <span className="text-sm text-ink">{member.name}</span>
-              </div>
+          {visibleMembers.map((member) => {
+            const isOnline = onlineUserIds.includes(member.user_id);
 
-              <span
-                className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs ${
-                  member.role === "owner"
-                    ? "bg-accent-tint text-accent-ink"
-                    : "bg-surface text-slate"
-                }`}
+            return (
+              <div
+                key={member.user_id}
+                className="flex items-center justify-between gap-3 px-4 py-3"
               >
-                {member.role}
-              </span>
-            </div>
-          ))}
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-tint text-xs font-medium text-accent-ink">
+                      {getInitials(member.name)}
+                    </span>
+
+                    {isOnline && (
+                      <span className="absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full border-2 border-bg bg-success" />
+                    )}
+                  </div>
+
+                  <span className="text-sm text-ink">{member.name}</span>
+                </div>
+
+                <span
+                  className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs ${
+                    member.role === "owner"
+                      ? "bg-accent-tint text-accent-ink"
+                      : "bg-surface text-slate"
+                  }`}
+                >
+                  {member.role}
+                </span>
+              </div>
+            );
+          })}
         </div>
       )}
-    </section>
+    </div>
   );
 };
 

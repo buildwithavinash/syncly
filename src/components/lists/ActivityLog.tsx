@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { History, Plus, Check, RotateCcw, Trash2, UserPlus } from "lucide-react";
+import { Plus, Check, RotateCcw, Trash2, UserPlus, History } from "lucide-react";
 import type { Activity } from "../../services/activityService";
 import { supabase } from "../../lib/supabase";
 
@@ -66,9 +66,7 @@ const ActivityLog = ({ activities, loading, error }: ActivityLogProps) => {
     loadProfileNames();
   }, [activities]);
 
-  const getUserName = (userId: string) => {
-    return profileNames[userId] ?? "Cartify user";
-  };
+  const getUserName = (userId: string) => profileNames[userId] ?? "Cartify user";
 
   const getActivityMessage = (activity: Activity) => {
     const userName = getUserName(activity.user_id);
@@ -91,64 +89,42 @@ const ActivityLog = ({ activities, loading, error }: ActivityLogProps) => {
   };
 
   if (loading || profilesLoading) {
-    return (
-      <section className="py-5">
-        <h2 className="mb-3 text-sm font-medium text-ink">Activity</h2>
-        <p className="text-sm text-slate">Loading activity...</p>
-      </section>
-    );
+    return <p className="text-sm text-slate">Loading activity...</p>;
   }
 
   if (error) {
     return (
-      <section className="py-5">
-        <h2 className="mb-3 text-sm font-medium text-ink">Activity</h2>
-        <p className="rounded-md bg-danger-tint px-3 py-2 text-sm text-danger">
-          {error}
-        </p>
-      </section>
+      <p className="rounded-md bg-danger-tint px-3 py-2 text-sm text-danger">
+        {error}
+      </p>
     );
   }
 
   if (activities.length === 0) {
-    return (
-      <section className="py-5">
-        <h2 className="mb-3 text-sm font-medium text-ink">Activity</h2>
-        <p className="text-sm text-slate">No activity yet.</p>
-      </section>
-    );
+    return <p className="text-sm text-slate">No activity yet.</p>;
   }
 
   return (
-    <section className="py-5">
-      <div className="mb-3 flex items-center gap-2">
-        <History className="h-4 w-4 text-slate" />
-        <h2 className="text-sm font-medium text-ink">Activity</h2>
-      </div>
+    <div className="flex flex-col gap-3">
+      {activities.map((activity) => {
+        const Icon = ACTIVITY_ICONS[activity.action] ?? History;
 
-      <div className="flex flex-col gap-3">
-        {activities.map((activity) => {
-          const Icon = ACTIVITY_ICONS[activity.action] ?? History;
+        return (
+          <div key={activity.id} className="flex items-start gap-3">
+            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface">
+              <Icon className="h-3.5 w-3.5 text-slate" />
+            </span>
 
-          return (
-            <div key={activity.id} className="flex items-start gap-3">
-              <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface">
-                <Icon className="h-3.5 w-3.5 text-slate" />
-              </span>
-
-              <div className="min-w-0">
-                <p className="text-sm text-ink">
-                  {getActivityMessage(activity)}
-                </p>
-                <p className="text-xs text-slate">
-                  {new Date(activity.created_at).toLocaleString()}
-                </p>
-              </div>
+            <div className="min-w-0">
+              <p className="text-sm text-ink">{getActivityMessage(activity)}</p>
+              <p className="text-xs text-slate">
+                {new Date(activity.created_at).toLocaleString()}
+              </p>
             </div>
-          );
-        })}
-      </div>
-    </section>
+          </div>
+        );
+      })}
+    </div>
   );
 };
 
