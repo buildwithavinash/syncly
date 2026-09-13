@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { ArrowLeft, Plus, ListChecks } from "lucide-react";
+import Loader from "../components/common/Loader";
+import { formatDisplayText } from "../lib/formatters";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 
@@ -112,7 +114,7 @@ const MyListsPage = () => {
       </header>
 
       {loading ? (
-        <p className="pt-6 text-sm text-slate">Loading your lists...</p>
+        <Loader label="Loading your lists..." centered />
       ) : (
         <div className="pt-6">
           {error && (
@@ -153,7 +155,7 @@ const MyListsPage = () => {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="font-display text-base text-ink">
-                      {list.name}
+                      {formatDisplayText(list.name)}
                     </h3>
 
                     <span

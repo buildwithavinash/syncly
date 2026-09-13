@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Plus, Check, RotateCcw, Trash2, UserPlus, History } from "lucide-react";
+import Loader from "../common/Loader";
+import { formatDisplayText } from "../../lib/formatters";
 import type { Activity } from "../../services/activityService";
 import { supabase } from "../../lib/supabase";
 
@@ -66,11 +68,12 @@ const ActivityLog = ({ activities, loading, error }: ActivityLogProps) => {
     loadProfileNames();
   }, [activities]);
 
-  const getUserName = (userId: string) => profileNames[userId] ?? "Cartify user";
+  const getUserName = (userId: string) =>
+    formatDisplayText(profileNames[userId]) || "Cartify user";
 
   const getActivityMessage = (activity: Activity) => {
     const userName = getUserName(activity.user_id);
-    const itemName = activity.metadata?.item_name ?? "an item";
+    const itemName = formatDisplayText(activity.metadata?.item_name) || "an item";
 
     switch (activity.action) {
       case "item_added":
@@ -89,7 +92,7 @@ const ActivityLog = ({ activities, loading, error }: ActivityLogProps) => {
   };
 
   if (loading || profilesLoading) {
-    return <p className="text-sm text-slate">Loading activity...</p>;
+    return <Loader label="Loading activity..." />;
   }
 
   if (error) {

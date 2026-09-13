@@ -1,4 +1,5 @@
 import { Navigate } from "react-router";
+import Loader from "../common/Loader";
 import { useAuth } from "../../context/AuthContext";
 
 type ProtectedRouteProps = {
@@ -9,7 +10,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <p>Loading...</p>;
+    return <Loader label="Loading..." centered />;
   }
 
   if (!user) {

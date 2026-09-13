@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import ConfirmModal from "../common/ConfirmModal";
+import { formatDisplayText } from "../../lib/formatters";
 import type { Item } from "../../services/itemService";
 
 type ItemGroupProps = {
@@ -34,7 +35,7 @@ const ItemGroup = ({
   return (
     <div className="py-2">
       <h3 className="mb-1.5 text-xs font-medium uppercase tracking-wide text-slate">
-        {category}
+        {formatDisplayText(category)}
       </h3>
 
       <div className="flex flex-col divide-y divide-border rounded-lg border border-border">
@@ -57,7 +58,7 @@ const ItemGroup = ({
                 item.completed ? "text-slate line-through" : "text-ink"
               }`}
             >
-              {item.name}
+              {formatDisplayText(item.name)}
               {item.quantity && (
                 <span className={item.completed ? "" : "text-slate"}>
                   {" "}
@@ -70,7 +71,7 @@ const ItemGroup = ({
               type="button"
               onClick={() => setPendingDelete(item)}
               className="shrink-0 rounded-md p-1 text-slate opacity-0 transition-colors hover:text-danger group-hover:opacity-100 focus-visible:opacity-100"
-              aria-label={`Delete ${item.name}`}
+              aria-label={`Delete ${formatDisplayText(item.name)}`}
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>
@@ -85,7 +86,7 @@ const ItemGroup = ({
         title="Delete this item?"
         description={
           pendingDelete
-            ? `"${pendingDelete.name}" will be removed from the list.`
+            ? `"${formatDisplayText(pendingDelete.name)}" will be removed from the list.`
             : ""
         }
         confirming={deleting}

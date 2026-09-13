@@ -1,3 +1,5 @@
+import { formatDisplayText } from "../../lib/formatters";
+
 type PresenceUser = {
   userId: string;
   name: string;
@@ -41,7 +43,9 @@ const PresenceList = ({ onlineUsers }: PresenceListProps) => {
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent-tint text-[10px] font-medium text-accent-ink">
                 {getInitials(onlineUser.name)}
               </span>
-              <span className="text-xs text-ink">{onlineUser.name}</span>
+              <span className="text-xs text-ink">
+                {formatDisplayText(onlineUser.name)}
+              </span>
             </div>
           ))}
         </div>

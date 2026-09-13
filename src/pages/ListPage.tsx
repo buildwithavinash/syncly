@@ -11,6 +11,7 @@ import { supabase } from "../lib/supabase";
 
 import Modal from "../components/common/Modal";
 import Loader from "../components/common/Loader";
+import { formatDisplayText } from "../lib/formatters";
 import ListHeader from "../components/lists/ListHeader";
 import MembersList from "../components/lists/MembersList";
 import AddItemForm from "../components/lists/AddItemForm";
@@ -129,10 +130,10 @@ const ListPage = () => {
       <div className="mx-auto max-w-2xl">
         <div className="pt-6">
           <h1 className="truncate font-display text-2xl text-ink sm:text-3xl">
-            {list.name}
+            {formatDisplayText(list.name)}
           </h1>
           <p className="mt-1 text-sm text-slate">
-            Created by {isOwner ? "you" : creatorName || "..."}
+            Created by {isOwner ? "you" : formatDisplayText(creatorName) || "..."}
           </p>
         </div>
 

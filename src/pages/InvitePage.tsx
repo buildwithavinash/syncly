@@ -1,5 +1,7 @@
 import { Link, useNavigate, useParams } from "react-router";
 import { ArrowLeft, Users, Check } from "lucide-react";
+import Loader from "../components/common/Loader";
+import { formatDisplayText } from "../lib/formatters";
 import { useAuth } from "../context/AuthContext";
 import { usePublicList } from "../hooks/usePublicList";
 import { useAcceptInvite } from "../hooks/useAcceptInvite";
@@ -29,7 +31,7 @@ const InvitePage = () => {
       <main className="relative min-h-screen px-gutter py-12">
         <BackButton to="/" />
         <div className="mx-auto max-w-sm pt-14 text-center">
-          <p className="text-sm text-slate">Loading shared list...</p>
+          <Loader label="Loading shared list..." centered />
         </div>
       </main>
     );
@@ -98,7 +100,7 @@ const InvitePage = () => {
             Shared list
           </p>
           <h1 className="font-display text-2xl text-ink sm:text-3xl">
-            {data.list.name}
+            {formatDisplayText(data.list.name)}
           </h1>
         </div>
 
@@ -115,12 +117,12 @@ const InvitePage = () => {
                     <div key={item.id} className="flex items-center gap-3 px-4 py-3">
                       <span className="h-4 w-4 shrink-0 rounded border border-border-strong" />
                       <span className="text-sm text-ink">
-                        {item.name}
+                        {formatDisplayText(item.name)}
                         {item.quantity && (
                           <span className="text-slate"> — {item.quantity}</span>
                         )}
                         {item.category && (
-                          <span className="text-slate"> ({item.category})</span>
+                          <span className="text-slate"> ({formatDisplayText(item.category)})</span>
                         )}
                       </span>
                     </div>
@@ -140,7 +142,7 @@ const InvitePage = () => {
                           <Check className="h-3 w-3 text-white" />
                         </span>
                         <span className="text-sm text-slate line-through">
-                          {item.name}
+                          {formatDisplayText(item.name)}
                           {item.quantity && <span> — {item.quantity}</span>}
                         </span>
                       </div>

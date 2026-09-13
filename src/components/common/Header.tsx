@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router";
 import { Menu, X } from "lucide-react";
+import Loader from "./Loader";
 import { useAuth } from "../../context/AuthContext";
 import { supabase } from "../../lib/supabase";
 import { useToast } from "../../context/ToastContext";
@@ -72,7 +73,7 @@ const Header = () => {
         </Link>
 
         {loading ? (
-          <span className="text-sm text-slate">Loading...</span>
+          <Loader label="Loading..." />
         ) : user ? (
           <>
             <nav className="hidden items-center gap-6 sm:flex">

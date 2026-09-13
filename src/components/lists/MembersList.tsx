@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Loader from "../common/Loader";
+import { formatDisplayText } from "../../lib/formatters";
 import { supabase } from "../../lib/supabase";
 
 type Member = {
@@ -206,7 +207,9 @@ const MembersList = ({ listId, onlineUserIds }: MembersListProps) => {
                     )}
                   </div>
 
-                  <span className="text-sm text-ink">{member.name}</span>
+                  <span className="text-sm text-ink">
+                    {formatDisplayText(member.name)}
+                  </span>
                 </div>
 
                 <span
