@@ -12,6 +12,13 @@ export type Item = {
   updated_at: string;
 };
 
+export type ItemUpdate = {
+  name?: string;
+  quantity?: string | null;
+  category?: string | null;
+  completed?: boolean;
+};
+
 export const getListItems = async (
   listId: string
 ): Promise<Item[]> => {
@@ -56,11 +63,11 @@ export const createItem = async (
 
 export const updateItem = async (
   itemId: string,
-  completed: boolean
+  updates: ItemUpdate
 ): Promise<void> => {
   const { error } = await supabase
     .from("items")
-    .update({ completed })
+    .update(updates)
     .eq("id", itemId);
 
   if (error) {

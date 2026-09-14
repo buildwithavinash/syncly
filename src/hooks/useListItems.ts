@@ -32,6 +32,13 @@ type UseListItemsReturn = {
     completed: boolean
   ) => Promise<void>;
 
+  editItem: (
+    itemId: string,
+    name: string,
+    quantity: string,
+    category: string
+  ) => Promise<boolean>;
+
   deleteItemById: (
     itemId: string
   ) => Promise<void>;
@@ -91,9 +98,6 @@ export const useListItems = (
 
       /*
        * INSERT
-       *
-       * Add new items received from Supabase
-       * unless the item already exists locally.
        */
       .on(
         "postgres_changes",
@@ -122,9 +126,6 @@ export const useListItems = (
 
       /*
        * UPDATE
-       *
-       * Replace the matching item with
-       * the updated database version.
        */
       .on(
         "postgres_changes",
@@ -149,12 +150,6 @@ export const useListItems = (
 
       /*
        * DELETE
-       *
-       * DELETE does not use a list_id filter because
-       * we need the old row information.
-       *
-       * REPLICA IDENTITY FULL is enabled on the
-       * items table for this to work.
        */
       .on(
         "postgres_changes",
@@ -183,9 +178,7 @@ export const useListItems = (
       });
 
     /*
-     * Cleanup the realtime channel when the
-     * component using this hook unmounts or
-     * the list ID changes.
+     * Cleanup realtime channel.
      */
     return () => {
       supabase.removeChannel(channel);
@@ -211,14 +204,7 @@ export const useListItems = (
 
     if (!trimmedName) return;
 
-    /*
-     * Generate the ID on the client.
-     *
-     * This allows the optimistic item and the
-     * eventual database item to have the same ID.
-     */
     const optimisticId = crypto.randomUUID();
-
     const now = new Date().toISOString();
 
     const optimisticItem: Item = {
@@ -235,9 +221,6 @@ export const useListItems = (
 
     /*
      * Optimistic update.
-     *
-     * The item appears immediately without
-     * waiting for Supabase.
      */
     setItems((currentItems) => [
       ...currentItems,
@@ -248,16 +231,12 @@ export const useListItems = (
       setAddingItem(true);
       setError("");
 
-      /*
-       * Send the item to Supabase.
-       */
-      const savedItem = await createItem(
-        optimisticItem
-      );
+      const savedItem =
+        await createItem(optimisticItem);
 
       /*
-       * Replace the temporary optimistic item
-       * with the real database row.
+       * Replace optimistic item with
+       * the real database row.
        */
       setItems((currentItems) =>
         currentItems.map((item) =>
@@ -271,9 +250,6 @@ export const useListItems = (
 
       /*
        * Rollback.
-       *
-       * If Supabase rejects the insert, remove
-       * the optimistic item.
        */
       setItems((currentItems) =>
         currentItems.filter(
@@ -292,7 +268,7 @@ export const useListItems = (
   };
 
   /*
-   * Toggle item's completed state with
+   * Toggle item completion with
    * optimistic update + rollback.
    */
   const toggleItem = async (
@@ -305,9 +281,6 @@ export const useListItems = (
 
     if (!previousItem) return;
 
-    /*
-     * Optimistic update.
-     */
     setItems((currentItems) =>
       currentItems.map((item) =>
         item.id === itemId
@@ -322,27 +295,19 @@ export const useListItems = (
     try {
       setError("");
 
-      await updateItem(
-        itemId,
-        completed
-      );
+      await updateItem(itemId, {
+        completed,
+      });
     } catch (error) {
       console.error(
         "Error updating item:",
         error
       );
 
-      /*
-       * Rollback.
-       */
       setItems((currentItems) =>
         currentItems.map((item) =>
           item.id === itemId
-            ? {
-                ...item,
-                completed:
-                  previousItem.completed,
-              }
+            ? previousItem
             : item
         )
       );
@@ -356,8 +321,104 @@ export const useListItems = (
   };
 
   /*
-   * Delete item with optimistic update +
-   * rollback.
+   * Edit item details with
+   * optimistic update + rollback.
+   */
+  const editItem = async (
+    itemId: string,
+    name: string,
+    quantity: string,
+    category: string
+  ): Promise<boolean> => {
+    const previousItem = items.find(
+      (item) => item.id === itemId
+    );
+
+    if (!previousItem) {
+      return false;
+    }
+
+    const trimmedName = name.trim();
+    const trimmedQuantity = quantity.trim();
+    const trimmedCategory = category.trim();
+
+    if (!trimmedName) {
+      return false;
+    }
+
+    /*
+     * Nothing changed.
+     */
+    if (
+      trimmedName === previousItem.name &&
+      (trimmedQuantity || null) ===
+        previousItem.quantity &&
+      (trimmedCategory || null) ===
+        previousItem.category
+    ) {
+      return true;
+    }
+
+    /*
+     * Optimistic update.
+     */
+    setItems((currentItems) =>
+      currentItems.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              name: trimmedName,
+              quantity:
+                trimmedQuantity || null,
+              category:
+                trimmedCategory || null,
+            }
+          : item
+      )
+    );
+
+    try {
+      setError("");
+
+      await updateItem(itemId, {
+        name: trimmedName,
+        quantity:
+          trimmedQuantity || null,
+        category:
+          trimmedCategory || null,
+      });
+
+      return true;
+    } catch (error) {
+      console.error(
+        "Error editing item:",
+        error
+      );
+
+      /*
+       * Rollback.
+       */
+      setItems((currentItems) =>
+        currentItems.map((item) =>
+          item.id === itemId
+            ? previousItem
+            : item
+        )
+      );
+
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Failed to edit item."
+      );
+
+      return false;
+    }
+  };
+
+  /*
+   * Delete item with optimistic update
+   * + rollback.
    */
   const deleteItemById = async (
     itemId: string
@@ -368,9 +429,6 @@ export const useListItems = (
 
     if (!previousItem) return;
 
-    /*
-     * Optimistically remove the item.
-     */
     setItems((currentItems) =>
       currentItems.filter(
         (item) => item.id !== itemId
@@ -387,9 +445,6 @@ export const useListItems = (
         error
       );
 
-      /*
-       * Rollback.
-       */
       setItems((currentItems) => [
         ...currentItems,
         previousItem,
@@ -410,6 +465,7 @@ export const useListItems = (
     addingItem,
     addItem,
     toggleItem,
+    editItem,
     deleteItemById,
   };
 };

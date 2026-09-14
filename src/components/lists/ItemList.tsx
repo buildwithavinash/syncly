@@ -1,14 +1,31 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
+
 import ItemGroup from "./ItemGroup";
 import Loader from "../common/Loader";
+
 import type { Item } from "../../services/itemService";
 
 type ItemListProps = {
   items: Item[];
   loading: boolean;
-  onToggleItem: (itemId: string, completed: boolean) => Promise<void>;
-  onDeleteItem: (itemId: string) => Promise<void>;
+
+  onToggleItem: (
+    itemId: string,
+    completed: boolean
+  ) => Promise<void>;
+
+  onEditItem: (
+    itemId: string,
+    name: string,
+    quantity: string,
+    category: string
+  ) => Promise<boolean>;
+
+  onDeleteItem: (
+    itemId: string
+  ) => Promise<void>;
+
   onAddItemClick: () => void;
 };
 
@@ -17,36 +34,59 @@ type ItemGroupData = {
   items: Item[];
 };
 
-type Tab = "all" | "pending" | "completed";
+type Tab =
+  | "all"
+  | "pending"
+  | "completed";
 
-const groupByCategory = (items: Item[]): ItemGroupData[] => {
-  return items.reduce<ItemGroupData[]>((groups, item) => {
-    const category = item.category?.trim() || "Uncategorized";
-    const existingGroup = groups.find(
-      (group) => group.category === category
-    );
+const groupByCategory = (
+  items: Item[]
+): ItemGroupData[] => {
+  return items.reduce<ItemGroupData[]>(
+    (groups, item) => {
+      const category =
+        item.category?.trim() ||
+        "Uncategorized";
 
-    if (existingGroup) {
-      existingGroup.items.push(item);
-    } else {
-      groups.push({ category, items: [item] });
-    }
+      const existingGroup =
+        groups.find(
+          (group) =>
+            group.category === category
+        );
 
-    return groups;
-  }, []);
+      if (existingGroup) {
+        existingGroup.items.push(item);
+      } else {
+        groups.push({
+          category,
+          items: [item],
+        });
+      }
+
+      return groups;
+    },
+    []
+  );
 };
 
 const ItemList = ({
   items,
   loading,
   onToggleItem,
+  onEditItem,
   onDeleteItem,
   onAddItemClick,
 }: ItemListProps) => {
-  const [activeTab, setActiveTab] = useState<Tab>("all");
+  const [activeTab, setActiveTab] =
+    useState<Tab>("all");
 
-  const pendingItems = items.filter((item) => !item.completed);
-  const completedItems = items.filter((item) => item.completed);
+  const pendingItems = items.filter(
+    (item) => !item.completed
+  );
+
+  const completedItems = items.filter(
+    (item) => item.completed
+  );
 
   const tabItems =
     activeTab === "pending"
@@ -55,18 +95,33 @@ const ItemList = ({
       ? completedItems
       : items;
 
-  const groupedItems = groupByCategory(tabItems);
+  const groupedItems =
+    groupByCategory(tabItems);
 
-  const tabs: { id: Tab; label: string }[] = [
-    { id: "all", label: `All (${items.length})` },
-    { id: "pending", label: `Pending (${pendingItems.length})` },
-    { id: "completed", label: `Completed (${completedItems.length})` },
+  const tabs: {
+    id: Tab;
+    label: string;
+  }[] = [
+    {
+      id: "all",
+      label: `All (${items.length})`,
+    },
+    {
+      id: "pending",
+      label: `Pending (${pendingItems.length})`,
+    },
+    {
+      id: "completed",
+      label: `Completed (${completedItems.length})`,
+    },
   ];
 
   return (
     <section className="py-5">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="text-sm font-medium text-ink">Items</h2>
+        <h2 className="text-sm font-medium text-ink">
+          Items
+        </h2>
 
         <button
           type="button"
@@ -87,7 +142,9 @@ const ItemList = ({
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() =>
+                  setActiveTab(tab.id)
+                }
                 className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                   activeTab === tab.id
                     ? "bg-accent text-white"
@@ -100,7 +157,9 @@ const ItemList = ({
           </div>
 
           {items.length === 0 ? (
-            <p className="text-sm text-slate">No items yet.</p>
+            <p className="text-sm text-slate">
+              No items yet.
+            </p>
           ) : groupedItems.length === 0 ? (
             <p className="py-3 text-sm text-slate">
               {activeTab === "pending"
@@ -113,8 +172,15 @@ const ItemList = ({
                 key={group.category}
                 category={group.category}
                 items={group.items}
-                onToggleItem={onToggleItem}
-                onDeleteItem={onDeleteItem}
+                onToggleItem={
+                  onToggleItem
+                }
+                onEditItem={
+                  onEditItem
+                }
+                onDeleteItem={
+                  onDeleteItem
+                }
               />
             ))
           )}
